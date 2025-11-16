@@ -40,6 +40,8 @@ import About from "./pages/About";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import StoreSettings from "./pages/StoreSettings";
+import SecurityInfo from "./pages/SecurityInfo";
+import ProductManagement from "./pages/ProductManagement";
 
 const queryClient = new QueryClient();
 
@@ -83,6 +85,8 @@ const App = () => (
             <Route path="/about" element={<ProtectedRoute><About /></ProtectedRoute>} />
             <Route path="/terms" element={<ProtectedRoute><Terms /></ProtectedRoute>} />
             <Route path="/privacy" element={<ProtectedRoute><Privacy /></ProtectedRoute>} />
+            <Route path="/security-info" element={<SecurityInfo />} />
+            <Route path="/product-management/:id" element={<ProtectedRoute><ProductManagement /></ProtectedRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </CartProvider>

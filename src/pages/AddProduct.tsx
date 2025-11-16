@@ -35,6 +35,7 @@ const AddProduct = () => {
     inquiry_only: false,
     published: false,
   });
+  const [perks, setPerks] = useState<Array<{ icon: string; label: string; color: string }>>([]);
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -124,6 +125,7 @@ const AddProduct = () => {
           origin: formData.origin,
           warranty: formData.warranty,
           hs_code: formData.hs_code,
+          perks: perks,
           images: imageUrls,
           inquiry_only: formData.inquiry_only,
           published: formData.published,
@@ -360,6 +362,78 @@ const AddProduct = () => {
                 />
               </div>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle>Product Perks</CardTitle>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => setPerks([...perks, { icon: 'star', label: '', color: '#22c55e' }])}
+              >
+                <Upload className="h-4 w-4 mr-1" />
+                Add Perk
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {perks.map((perk, index) => (
+              <div key={index} className="flex gap-2 items-start">
+                <Input
+                  placeholder="Label (e.g., Fast Shipping)"
+                  value={perk.label}
+                  onChange={(e) => {
+                    const updated = [...perks];
+                    updated[index] = { ...updated[index], label: e.target.value };
+                    setPerks(updated);
+                  }}
+                  className="flex-1"
+                />
+                <select
+                  value={perk.icon}
+                  onChange={(e) => {
+                    const updated = [...perks];
+                    updated[index] = { ...updated[index], icon: e.target.value };
+                    setPerks(updated);
+                  }}
+                  className="px-3 py-2 border rounded-md bg-background"
+                >
+                  <option value="star">⭐ Star</option>
+                  <option value="zap">⚡ Zap</option>
+                  <option value="truck">🚚 Truck</option>
+                  <option value="shield">🛡️ Shield</option>
+                  <option value="leaf">🌿 Leaf</option>
+                  <option value="award">🏆 Award</option>
+                </select>
+                <Input
+                  type="color"
+                  value={perk.color}
+                  onChange={(e) => {
+                    const updated = [...perks];
+                    updated[index] = { ...updated[index], color: e.target.value };
+                    setPerks(updated);
+                  }}
+                  className="w-16"
+                />
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => setPerks(perks.filter((_, i) => i !== index))}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+            {perks.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                No perks added. Click "Add Perk" to highlight product features.
+              </p>
+            )}
           </CardContent>
         </Card>
 

@@ -294,6 +294,7 @@ export type Database = {
           model_number: string | null
           moq: number | null
           origin: string | null
+          perks: Json | null
           price: number
           product_code: string
           published: boolean | null
@@ -316,6 +317,7 @@ export type Database = {
           model_number?: string | null
           moq?: number | null
           origin?: string | null
+          perks?: Json | null
           price: number
           product_code?: string
           published?: boolean | null
@@ -338,6 +340,7 @@ export type Database = {
           model_number?: string | null
           moq?: number | null
           origin?: string | null
+          perks?: Json | null
           price?: number
           product_code?: string
           published?: boolean | null
