@@ -104,6 +104,28 @@ const Profile = () => {
       </div>
 
       <div className="p-4 space-y-4">
+        {/* Quick Actions */}
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <Card 
+            className="cursor-pointer hover:shadow-md transition-all"
+            onClick={() => navigate('/orders')}
+          >
+            <CardContent className="p-4 text-center">
+              <ShoppingBag className="h-8 w-8 mx-auto mb-2 text-primary" />
+              <p className="text-sm font-medium">My Orders</p>
+            </CardContent>
+          </Card>
+          <Card 
+            className="cursor-pointer hover:shadow-md transition-all"
+            onClick={() => navigate('/settings')}
+          >
+            <CardContent className="p-4 text-center">
+              <User className="h-8 w-8 mx-auto mb-2 text-primary" />
+              <p className="text-sm font-medium">Settings</p>
+            </CardContent>
+          </Card>
+        </div>
+
         <div className="space-y-3">
           <Card 
             className="cursor-pointer hover:shadow-md transition-shadow relative"
