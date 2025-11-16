@@ -124,7 +124,7 @@ const StorePage = () => {
       </div>
 
       {/* Store Info */}
-      <div className="px-4 -mt-16 relative z-10">
+      <div className="px-4 -mt-16 relative z-10 mb-4">
         <Card className="shadow-lg">
           <CardContent className="p-4">
             <div className="flex gap-4">
@@ -176,8 +176,12 @@ const StorePage = () => {
       </div>
 
       {/* Products */}
-      <div className="p-4 mt-6">
-        <h2 className="text-lg font-semibold mb-4">Store Products</h2>
+      <div className="p-4">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold">Products</h2>
+          <Badge variant="outline">{products.length} items</Badge>
+        </div>
+        
         {products.length === 0 ? (
           <Card>
             <CardContent className="p-8 text-center text-muted-foreground">
@@ -186,11 +190,11 @@ const StorePage = () => {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
             {products.map((product) => (
               <Card
                 key={product.id}
-                className="overflow-hidden cursor-pointer hover:shadow-lg transition-shadow"
+                className="overflow-hidden cursor-pointer hover:shadow-lg transition-all"
                 onClick={() => navigate(`/product/${product.id}`)}
               >
                 <div className="aspect-square bg-muted relative">
@@ -216,7 +220,7 @@ const StorePage = () => {
                   <p className="text-xs text-muted-foreground mb-2">
                     {product.product_code}
                   </p>
-                  <p className="text-primary font-bold">
+                  <p className="text-primary font-bold text-sm">
                     Le {product.price.toLocaleString()}
                   </p>
                 </CardContent>

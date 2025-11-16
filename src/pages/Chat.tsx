@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
-import { ArrowLeft, Send, Image as ImageIcon, Package } from 'lucide-react';
+import { ArrowLeft, Send, Image as ImageIcon, Package, MessageCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Message {

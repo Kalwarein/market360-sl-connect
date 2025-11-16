@@ -116,8 +116,21 @@ const SellerDashboard = () => {
     <div className="min-h-screen bg-background pb-20">
       {/* Header */}
       <div className="bg-gradient-to-r from-primary to-secondary text-white p-6">
-        <h1 className="text-2xl font-bold">{store?.store_name || 'My Store'}</h1>
-        <p className="text-sm opacity-90">Seller Dashboard</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold">{store?.store_name || 'My Store'}</h1>
+            <p className="text-sm opacity-90">Seller Dashboard</p>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-white hover:bg-white/20"
+            onClick={() => navigate('/store-settings')}
+          >
+            <Settings className="h-4 w-4 mr-2" />
+            Store Settings
+          </Button>
+        </div>
       </div>
 
       <div className="p-4">
