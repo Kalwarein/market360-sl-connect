@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { Grid3x3, Smartphone, Shirt, HomeIcon, Zap, Wrench } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import BottomNav from '@/components/BottomNav';
@@ -89,7 +90,7 @@ const categories = [
 ];
 
 const Categories = () => {
-  React.useEffect(() => {
+  useEffect(() => {
     const particleContainer = document.getElementById('particle-container');
     if (!particleContainer) return;
 
@@ -130,7 +131,6 @@ const Categories = () => {
             key={category.name}
             className="cursor-pointer hover:shadow-xl transition-all overflow-hidden border-0 float-animation"
             style={{ 
-              animationDelay: `${index * 0.1}s`,
               opacity: 0,
               animation: `fadeInUp 0.6s ease-out forwards`,
               animationDelay: `${index * 0.08}s`
