@@ -169,23 +169,56 @@ const AdminDashboard = () => {
 
   return (
     <div className="min-h-screen bg-background pb-20">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-primary to-secondary text-white p-6">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Shield className="h-8 w-8" />
-            <div>
-              <h1 className="text-2xl font-bold">Admin Dashboard</h1>
-              <p className="text-sm opacity-90">Market360 Control Center</p>
+      <div className="bg-white border-b shadow-sm sticky top-0 z-10">
+        <div className="p-4">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <Shield className="h-6 w-6 text-primary" />
+              <h1 className="text-lg font-bold text-primary">Admin Dashboard</h1>
             </div>
+            <Button variant="outline" size="sm" onClick={handleLogout}>
+              Logout
+            </Button>
           </div>
-          <Button
-            variant="ghost"
-            className="text-white hover:bg-white/20"
-            onClick={handleLogout}
-          >
-            Logout
-          </Button>
+          
+          <div className="flex gap-2 overflow-x-auto pb-2">
+            <Button
+              variant={window.location.pathname === '/admin-dashboard' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => navigate('/admin-dashboard')}
+              className="whitespace-nowrap"
+            >
+              <Users className="h-4 w-4 mr-2" />
+              Applications
+            </Button>
+            <Button
+              variant={window.location.pathname === '/admin-wallet-requests' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => navigate('/admin-wallet-requests')}
+              className="whitespace-nowrap"
+            >
+              <Package className="h-4 w-4 mr-2" />
+              Wallet Requests
+            </Button>
+            <Button
+              variant={window.location.pathname === '/admin-broadcast' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => navigate('/admin-broadcast')}
+              className="whitespace-nowrap"
+            >
+              <MessageSquare className="h-4 w-4 mr-2" />
+              Broadcast
+            </Button>
+            <Button
+              variant={window.location.pathname === '/admin-audit-logs' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => navigate('/admin-audit-logs')}
+              className="whitespace-nowrap"
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              Audit Logs
+            </Button>
+          </div>
         </div>
       </div>
 

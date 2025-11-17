@@ -2,15 +2,13 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { ArrowLeft, Wallet as WalletIcon, ArrowUpCircle, ArrowDownCircle, Clock, Upload } from 'lucide-react';
+import { ArrowLeft, Wallet as WalletIcon, ArrowUpCircle, ArrowDownCircle, Clock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
-import { toast } from 'sonner';
+import { DepositModal } from '@/components/DepositModal';
+import { WithdrawModal } from '@/components/WithdrawModal';
 
 interface Transaction {
   id: string;
@@ -27,12 +25,8 @@ const Wallet = () => {
   const [balance, setBalance] = useState(0);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
-  const [depositAmount, setDepositAmount] = useState('');
-  const [depositPhone, setDepositPhone] = useState('');
-  const [depositScreenshot, setDepositScreenshot] = useState<File | null>(null);
-  const [withdrawAmount, setWithdrawAmount] = useState('');
-  const [withdrawPhone, setWithdrawPhone] = useState('');
-  const [submitting, setSubmitting] = useState(false);
+  const [depositModalOpen, setDepositModalOpen] = useState(false);
+  const [withdrawModalOpen, setWithdrawModalOpen] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -69,87 +63,6 @@ const Wallet = () => {
     }
   };
 
-  const handleDeposit = async () => {
-    if (!depositAmount || !depositPhone) {
-      toast.error('Please fill all required fields');
-      return;
-    }
-
-    try {
-      setSubmitting(true);
-      let screenshotUrl = '';
-
-      if (depositScreenshot) {
-        const fileExt = depositScreenshot.name.split('.').pop();
-        const fileName = `${user?.id}-${Date.now()}.${fileExt}`;
-        const { error: uploadError } = await supabase.storage
-          .from('kyc-docs')
-          .upload(fileName, depositScreenshot);
-
-        if (uploadError) throw uploadError;
-
-        const { data: { publicUrl } } = supabase.storage
-          .from('kyc-docs')
-          .getPublicUrl(fileName);
-        screenshotUrl = publicUrl;
-      }
-
-      const { error } = await supabase.from('wallet_requests').insert({
-        user_id: user?.id,
-        type: 'deposit',
-        amount: parseFloat(depositAmount),
-        phone_number: depositPhone,
-        screenshot_url: screenshotUrl,
-      });
-
-      if (error) throw error;
-
-      toast.success('Deposit request submitted. Awaiting admin approval.');
-      setDepositAmount('');
-      setDepositPhone('');
-      setDepositScreenshot(null);
-    } catch (error) {
-      console.error('Error submitting deposit:', error);
-      toast.error('Failed to submit deposit request');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleWithdraw = async () => {
-    if (!withdrawAmount || !withdrawPhone) {
-      toast.error('Please fill all required fields');
-      return;
-    }
-
-    const amount = parseFloat(withdrawAmount);
-    if (amount > balance) {
-      toast.error('Insufficient balance');
-      return;
-    }
-
-    try {
-      setSubmitting(true);
-      const { error } = await supabase.from('wallet_requests').insert({
-        user_id: user?.id,
-        type: 'withdrawal',
-        amount,
-        phone_number: withdrawPhone,
-      });
-
-      if (error) throw error;
-
-      toast.success('Withdrawal request submitted. Awaiting admin approval.');
-      setWithdrawAmount('');
-      setWithdrawPhone('');
-    } catch (error) {
-      console.error('Error submitting withdrawal:', error);
-      toast.error('Failed to submit withdrawal request');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
   const getTransactionIcon = (type: string) => {
     switch (type) {
       case 'deposit':
@@ -165,198 +78,122 @@ const Wallet = () => {
 
   return (
     <div className="min-h-screen bg-background pb-8">
-      <div className="bg-gradient-to-r from-primary to-secondary text-white p-6">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="text-white hover:bg-white/20 mb-4"
-          onClick={() => navigate(-1)}
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          Back
-        </Button>
-        <h1 className="text-2xl font-bold">My Wallet</h1>
-        <p className="text-sm opacity-90">Manage your funds</p>
+      <div className="bg-white border-b shadow-sm sticky top-0 z-10">
+        <div className="p-4 flex items-center gap-3">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate(-1)}
+            className="rounded-full"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <h1 className="text-lg font-bold">My Wallet</h1>
+        </div>
       </div>
 
-      <div className="p-4 space-y-4">
-        {/* Balance Card */}
-        <Card className="shadow-lg">
+      <div className="p-6 space-y-6">
+        <Card className="bg-gradient-to-br from-primary to-primary-hover text-white shadow-lg">
           <CardContent className="p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                <WalletIcon className="h-6 w-6 text-primary" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Available Balance</p>
-                <p className="text-3xl font-bold text-primary">
-                  Le {balance.toLocaleString()}
-                </p>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <WalletIcon className="h-6 w-6" />
+                <span className="text-sm opacity-90">Available Balance</span>
               </div>
             </div>
+            <p className="text-4xl font-bold mb-2">
+              SLL {loading ? '...' : balance.toLocaleString()}
+            </p>
           </CardContent>
         </Card>
 
-        {/* Tabs */}
-        <Tabs defaultValue="transactions" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="deposit">Deposit</TabsTrigger>
-            <TabsTrigger value="withdraw">Withdraw</TabsTrigger>
-            <TabsTrigger value="transactions">History</TabsTrigger>
-          </TabsList>
+        <div className="grid grid-cols-2 gap-4">
+          <Button
+            size="lg"
+            onClick={() => setDepositModalOpen(true)}
+            className="h-16 text-base font-semibold"
+          >
+            <ArrowUpCircle className="mr-2 h-5 w-5" />
+            Top Up
+          </Button>
+          <Button
+            size="lg"
+            variant="outline"
+            onClick={() => setWithdrawModalOpen(true)}
+            className="h-16 text-base font-semibold"
+          >
+            <ArrowDownCircle className="mr-2 h-5 w-5" />
+            Withdraw
+          </Button>
+        </div>
 
-          <TabsContent value="deposit" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Deposit via Orange Money</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-sm text-muted-foreground mb-4">
-                  Transfer funds to Market360 via Orange Money and get your wallet topped up
-                </p>
-                <div className="space-y-2">
-                  <Label htmlFor="deposit-amount">Amount (Le) *</Label>
-                  <Input
-                    id="deposit-amount"
-                    type="number"
-                    placeholder="Enter amount"
-                    value={depositAmount}
-                    onChange={(e) => setDepositAmount(e.target.value)}
-                  />
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="h-5 w-5" />
+              Transaction History
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {loading ? (
+                <div className="text-center py-8 text-gray-500">Loading...</div>
+              ) : transactions.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  No transactions yet
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="deposit-phone">Orange Money Number *</Label>
-                  <Input
-                    id="deposit-phone"
-                    type="tel"
-                    placeholder="+232 XX XXX XXXX"
-                    value={depositPhone}
-                    onChange={(e) => setDepositPhone(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="deposit-screenshot">Transaction Screenshot</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      id="deposit-screenshot"
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => setDepositScreenshot(e.target.files?.[0] || null)}
-                    />
-                    <Button type="button" variant="outline" size="icon">
-                      <Upload className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Upload proof of payment for faster approval
-                  </p>
-                </div>
-                <Button 
-                  className="w-full" 
-                  onClick={handleDeposit}
-                  disabled={submitting}
-                >
-                  {submitting ? 'Submitting...' : 'Submit Deposit Request'}
-                </Button>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="withdraw" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Withdraw to Orange Money</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="p-3 bg-muted rounded-lg mb-4">
-                  <p className="text-sm">
-                    <span className="font-medium">Available Balance:</span> Le {balance.toLocaleString()}
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="withdraw-amount">Amount (Le) *</Label>
-                  <Input
-                    id="withdraw-amount"
-                    type="number"
-                    placeholder="Enter amount"
-                    value={withdrawAmount}
-                    onChange={(e) => setWithdrawAmount(e.target.value)}
-                    max={balance}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="withdraw-phone">Orange Money Number *</Label>
-                  <Input
-                    id="withdraw-phone"
-                    type="tel"
-                    placeholder="+232 XX XXX XXXX"
-                    value={withdrawPhone}
-                    onChange={(e) => setWithdrawPhone(e.target.value)}
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Withdrawal requests are processed within 24 hours
-                </p>
-                <Button 
-                  className="w-full" 
-                  onClick={handleWithdraw}
-                  disabled={submitting}
-                >
-                  {submitting ? 'Submitting...' : 'Submit Withdrawal Request'}
-                </Button>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="transactions" className="space-y-3">
-            {loading ? (
-              <div className="space-y-3">
-                {[...Array(5)].map((_, i) => (
-                  <div key={i} className="bg-muted animate-pulse rounded-lg h-20" />
-                ))}
-              </div>
-            ) : transactions.length === 0 ? (
-              <Card>
-                <CardContent className="p-8 text-center text-muted-foreground">
-                  <Clock className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                  <p>No transactions yet</p>
-                </CardContent>
-              </Card>
-            ) : (
-              transactions.map((transaction) => (
-                <Card key={transaction.id}>
-                  <CardContent className="p-4">
+              ) : (
+                transactions.map((trans) => (
+                  <div
+                    key={trans.id}
+                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors"
+                  >
                     <div className="flex items-center gap-3">
-                      {getTransactionIcon(transaction.type)}
-                      <div className="flex-1">
-                        <p className="font-medium capitalize">
-                          {transaction.type.replace('_', ' ')}
+                      {getTransactionIcon(trans.type)}
+                      <div>
+                        <p className="font-medium capitalize">{trans.type}</p>
+                        <p className="text-sm text-gray-500">
+                          {format(new Date(trans.created_at), 'MMM dd, yyyy - HH:mm')}
                         </p>
-                        <p className="text-sm text-muted-foreground">
-                          {format(new Date(transaction.created_at), 'MMM dd, yyyy HH:mm')}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className={`font-bold ${
-                          transaction.type === 'deposit' || transaction.type === 'earning' 
-                            ? 'text-success' 
-                            : 'text-destructive'
-                        }`}>
-                          {transaction.type === 'deposit' || transaction.type === 'earning' ? '+' : '-'}
-                          Le {transaction.amount.toLocaleString()}
-                        </p>
-                        <Badge variant={transaction.status === 'completed' ? 'default' : 'secondary'} className="text-xs">
-                          {transaction.status}
-                        </Badge>
+                        {trans.reference && (
+                          <p className="text-xs text-gray-400">{trans.reference}</p>
+                        )}
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-              ))
-            )}
-          </TabsContent>
-        </Tabs>
+                    <div className="text-right">
+                      <p className={`font-bold text-lg ${
+                        trans.amount > 0 ? 'text-success' : 'text-destructive'
+                      }`}>
+                        {trans.amount > 0 ? '+' : ''}SLL {Math.abs(trans.amount).toLocaleString()}
+                      </p>
+                      <Badge variant={
+                        trans.status === 'completed' ? 'default' : 
+                        trans.status === 'pending' ? 'secondary' : 
+                        'destructive'
+                      }>
+                        {trans.status}
+                      </Badge>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </CardContent>
+        </Card>
       </div>
+
+      <DepositModal
+        open={depositModalOpen}
+        onOpenChange={setDepositModalOpen}
+        onSuccess={loadWalletData}
+      />
+
+      <WithdrawModal
+        open={withdrawModalOpen}
+        onOpenChange={setWithdrawModalOpen}
+        onSuccess={loadWalletData}
+        currentBalance={balance}
+      />
     </div>
   );
 };
