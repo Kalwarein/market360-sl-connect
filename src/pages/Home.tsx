@@ -14,6 +14,7 @@ import { PremiumSearchBar } from '@/components/PremiumSearchBar';
 import { ProductGridSkeleton } from '@/components/LoadingSkeleton';
 import { QuickAccessGrid } from '@/components/QuickAccessGrid';
 import { PromoBanner } from '@/components/PromoBanner';
+import { CategoryFilter } from '@/components/CategoryFilter';
 
 interface Product {
   id: string;
@@ -183,6 +184,11 @@ const Home = () => {
       {/* Promo Banners */}
       <div className="px-4 mt-6">
         <PromoBanner />
+      </div>
+
+      {/* Category Filter */}
+      <div className="px-4 mt-6">
+        <CategoryFilter />
       </div>
 
       {/* Quick Access Grid */}

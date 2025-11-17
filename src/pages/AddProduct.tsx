@@ -10,6 +10,8 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { ArrowLeft, Upload, X } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { CATEGORY_OPTIONS } from '@/components/CategoryCard';
+import { Badge } from '@/components/ui/badge';
 
 const AddProduct = () => {
   const { user } = useAuth();
@@ -36,6 +38,7 @@ const AddProduct = () => {
     published: false,
   });
   const [perks, setPerks] = useState<Array<{ icon: string; label: string; color: string }>>([]);
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -126,6 +129,7 @@ const AddProduct = () => {
           warranty: formData.warranty,
           hs_code: formData.hs_code,
           perks: perks,
+          category_cards: selectedCategories,
           images: imageUrls,
           inquiry_only: formData.inquiry_only,
           published: formData.published,
@@ -434,6 +438,55 @@ const AddProduct = () => {
                 No perks added. Click "Add Perk" to highlight product features.
               </p>
             )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Category Cards (Select 1-3)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground mb-4">
+              Select up to 3 highlight cards for your product
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              {CATEGORY_OPTIONS.map((cat) => {
+                const Icon = cat.icon;
+                const isSelected = selectedCategories.includes(cat.id);
+                return (
+                  <button
+                    key={cat.id}
+                    type="button"
+                    onClick={() => {
+                      if (isSelected) {
+                        setSelectedCategories(selectedCategories.filter(c => c !== cat.id));
+                      } else if (selectedCategories.length < 3) {
+                        setSelectedCategories([...selectedCategories, cat.id]);
+                      }
+                    }}
+                    className={`p-3 rounded-lg border-2 transition-all text-left ${
+                      isSelected 
+                        ? 'border-primary bg-primary/10' 
+                        : 'border-border hover:border-primary/50'
+                    } ${selectedCategories.length >= 3 && !isSelected ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    disabled={selectedCategories.length >= 3 && !isSelected}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Icon className="h-4 w-4" />
+                      <span className="text-sm font-medium">{cat.label}</span>
+                      {isSelected && (
+                        <Badge variant="secondary" className="ml-auto text-xs">
+                          Selected
+                        </Badge>
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-xs text-muted-foreground mt-3">
+              {selectedCategories.length}/3 selected
+            </p>
           </CardContent>
         </Card>
 

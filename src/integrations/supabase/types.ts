@@ -284,6 +284,7 @@ export type Database = {
         Row: {
           brand: string | null
           category: string
+          category_cards: string[] | null
           created_at: string
           description: string | null
           hs_code: string | null
@@ -307,6 +308,7 @@ export type Database = {
         Insert: {
           brand?: string | null
           category: string
+          category_cards?: string[] | null
           created_at?: string
           description?: string | null
           hs_code?: string | null
@@ -330,6 +332,7 @@ export type Database = {
         Update: {
           brand?: string | null
           category?: string
+          category_cards?: string[] | null
           created_at?: string
           description?: string | null
           hs_code?: string | null
