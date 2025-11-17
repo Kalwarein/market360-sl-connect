@@ -1,12 +1,104 @@
+'use client';
+
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Store, MapPin, Package } from 'lucide-react';
+import { Store, MapPin, Package, Search } from 'lucide-react';
 import BottomNav from '@/components/BottomNav';
 import { Input } from '@/components/ui/input';
+
+const animationStyles = `
+  @keyframes shimmer {
+    0% { background-position: -1000px 0; }
+    100% { background-position: 1000px 0; }
+  }
+  
+  @keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-8px); }
+  }
+  
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  @keyframes slideInUp {
+    from {
+      opacity: 0;
+      transform: translateY(15px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  @keyframes particleFloat {
+    0% { transform: translateY(100px) translateX(0); opacity: 0; }
+    10% { opacity: 1; }
+    90% { opacity: 1; }
+    100% { transform: translateY(-100px) translateX(20px); opacity: 0; }
+  }
+  
+  @keyframes typewriter {
+    0% { content: 'Search stores...'; }
+    25% { content: 'Find sellers...'; }
+    50% { content: 'Discover markets...'; }
+    75% { content: 'Search products...'; }
+    100% { content: 'Search stores...'; }
+  }
+  
+  @keyframes headerShimmer {
+    0% { background-position: -1000px center; }
+    100% { background-position: 1000px center; }
+  }
+  
+  @keyframes bannerPan {
+    0%, 100% { transform: translateX(0); }
+    50% { transform: translateX(3px); }
+  }
+  
+  .animated-header {
+    animation: fadeInUp 0.8s ease-out;
+  }
+  
+  .animated-card {
+    animation: slideInUp 0.6s ease-out forwards;
+  }
+  
+  .card-hover-float:hover {
+    animation: float 2s ease-in-out;
+  }
+  
+  .shimmer-overlay {
+    animation: shimmer 3s infinite;
+    background: linear-gradient(
+      to right,
+      transparent 0%,
+      rgba(255, 255, 255, 0.2) 50%,
+      transparent 100%
+    );
+    background-size: 1000px 100%;
+  }
+  
+  .banner-image {
+    animation: bannerPan 4s ease-in-out infinite;
+  }
+  
+  .particle {
+    animation: particleFloat 3s ease-in infinite;
+  }
+`;
 
 interface StoreData {
   id: string;
@@ -26,6 +118,7 @@ const Stores = () => {
   const [stores, setStores] = useState<StoreData[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [cardDelays, setCardDelays] = useState<{ [key: string]: string }>({});
 
   useEffect(() => {
     loadStores();
@@ -54,6 +147,12 @@ const Stores = () => {
       );
 
       setStores(storesWithCounts);
+      
+      const delays: { [key: string]: string } = {};
+      storesWithCounts.forEach((store, index) => {
+        delays[store.id] = `${index * 0.1}s`;
+      });
+      setCardDelays(delays);
     } catch (error) {
       console.error('Error loading stores:', error);
     } finally {
@@ -67,107 +166,171 @@ const Stores = () => {
       )
     : stores;
 
+  const particles = Array.from({ length: 6 }).map((_, i) => ({
+    id: i,
+    left: Math.random() * 100,
+    delay: Math.random() * 2,
+    duration: 3 + Math.random() * 2,
+  }));
+
   return (
-    <div className="min-h-screen bg-background pb-20">
-      <div className="bg-gradient-to-r from-primary to-secondary text-white p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <Store className="h-8 w-8" />
-          <div>
-            <h1 className="text-2xl font-bold">Stores</h1>
-            <p className="text-sm opacity-90">Explore verified sellers</p>
+    <>
+      <style>{animationStyles}</style>
+      <div className="min-h-screen bg-background pb-20">
+        <div className="relative overflow-hidden">
+          {/* Animated gradient background */}
+          <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 via-teal-500 to-blue-600 shimmer-overlay" 
+            style={{
+              backgroundSize: '200% 100%',
+              animation: 'headerShimmer 8s ease-in-out infinite',
+            }}>
+          </div>
+
+          {/* Floating particles */}
+          {particles.map((particle) => (
+            <div
+              key={particle.id}
+              className="particle absolute rounded-full bg-white/10 pointer-events-none"
+              style={{
+                width: Math.random() * 40 + 20 + 'px',
+                height: Math.random() * 40 + 20 + 'px',
+                left: particle.left + '%',
+                bottom: '-50px',
+                animation: `particleFloat ${particle.duration}s ease-in infinite`,
+                animationDelay: particle.delay + 's',
+              }}
+            />
+          ))}
+
+          {/* Header content */}
+          <div className="relative z-10 text-white p-6">
+            <div className="animated-header flex items-center gap-3 mb-6">
+              <Store className="h-8 w-8 drop-shadow-lg" />
+              <div>
+                <h1 className="text-3xl font-bold drop-shadow-md">Stores</h1>
+                <p className="text-sm opacity-95 drop-shadow">Explore verified sellers</p>
+              </div>
+            </div>
+
+            <div className="relative group">
+              <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
+                <Search className="h-5 w-5 text-white/70" />
+              </div>
+              <input
+                type="text"
+                placeholder="Search stores..."
+                className="w-full pl-12 pr-4 py-3 rounded-2xl bg-white/20 backdrop-blur-md text-white placeholder-white/60 border border-white/30 focus:border-white/60 focus:outline-none focus:ring-2 focus:ring-white/30 transition-all duration-300 focus:scale-105 origin-center"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.15)',
+                  backdropFilter: 'blur(10px)',
+                }}
+              />
+            </div>
           </div>
         </div>
-        <Input
-          placeholder="Search stores..."
-          className="bg-white text-foreground"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
-      </div>
 
-      <div className="p-4 space-y-4">
-        {loading ? (
-          <div className="grid grid-cols-1 gap-4">
-            {[...Array(5)].map((_, i) => (
-              <Skeleton key={i} className="h-32 w-full" />
-            ))}
-          </div>
-        ) : filteredStores.length === 0 ? (
-          <Card>
-            <CardContent className="p-12 text-center text-muted-foreground">
-              <Store className="h-16 w-16 mx-auto mb-4 opacity-50" />
-              <p>No stores found</p>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 gap-4">
-            {filteredStores.map((store: any) => (
-              <Card
-                key={store.id}
-                className="cursor-pointer hover:shadow-lg transition-shadow overflow-hidden"
-                onClick={() => navigate(`/store/${store.id}`)}
-              >
-                <div className="h-32 relative">
-                  {store.banner_url ? (
-                    <img
-                      src={store.banner_url}
-                      alt={store.store_name}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-gradient-to-r from-primary/20 to-secondary/20" />
-                  )}
-                </div>
-                <CardContent className="p-4">
-                  <div className="flex gap-3">
-                    <div className="h-16 w-16 rounded-lg border bg-card flex-shrink-0 overflow-hidden -mt-8 relative z-10">
-                      {store.logo_url ? (
+        {/* Store cards section */}
+        <div className="p-4 space-y-5">
+          {loading ? (
+            <div className="grid grid-cols-1 gap-5">
+              {[...Array(5)].map((_, i) => (
+                <Skeleton key={i} className="h-36 w-full rounded-2xl" />
+              ))}
+            </div>
+          ) : filteredStores.length === 0 ? (
+            <Card className="rounded-2xl">
+              <CardContent className="p-12 text-center text-muted-foreground">
+                <Store className="h-16 w-16 mx-auto mb-4 opacity-50" />
+                <p>No stores found</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 gap-5 md:gap-6 lg:gap-7">
+              {filteredStores.map((store: any, index: number) => (
+                <Card
+                  key={store.id}
+                  className="animated-card card-hover-float cursor-pointer rounded-2xl overflow-hidden shadow-md hover:shadow-2xl transition-all duration-300 border-0"
+                  onClick={() => navigate(`/store/${store.id}`)}
+                  style={{
+                    animationDelay: cardDelays[store.id] || '0s',
+                  }}
+                >
+                  <div className="h-32 md:h-36 relative overflow-hidden bg-gradient-to-br from-emerald-50 to-teal-50">
+                    {store.banner_url ? (
+                      <>
                         <img
-                          src={store.logo_url}
+                          src={store.banner_url || "/placeholder.svg"}
                           alt={store.store_name}
-                          className="w-full h-full object-cover"
+                          className="banner-image w-full h-full object-cover"
                         />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center bg-muted">
-                          <Package className="h-6 w-6 text-muted-foreground" />
+                        {/* Gradient overlay */}
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent" />
+                      </>
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-emerald-100 via-teal-100 to-blue-100" />
+                    )}
+                    {/* Shimmer effect */}
+                    <div className="absolute inset-0 shimmer-overlay" />
+                  </div>
+
+                  <CardContent className="p-5 md:p-6">
+                    <div className="flex gap-4">
+                      <div className="h-20 w-20 md:h-24 md:w-24 rounded-2xl border-2 border-white bg-card flex-shrink-0 overflow-hidden -mt-10 relative z-10 shadow-lg">
+                        {store.logo_url ? (
+                          <img
+                            src={store.logo_url || "/placeholder.svg"}
+                            alt={store.store_name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-emerald-50 to-teal-50">
+                            <Package className="h-8 w-8 text-emerald-400" />
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex-1 min-w-0 pt-1">
+                        <h3 className="font-bold text-lg md:text-xl line-clamp-1 text-foreground">
+                          {store.store_name}
+                        </h3>
+                        {(store.city || store.region) && (
+                          <div className="flex items-center gap-1 text-sm text-muted-foreground mb-3">
+                            <MapPin className="h-4 w-4 flex-shrink-0" />
+                            <span className="line-clamp-1">
+                              {[store.city, store.region].filter(Boolean).join(', ')}
+                            </span>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Badge 
+                            variant="outline"
+                            className="bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100 transition-colors"
+                          >
+                            <Package className="h-3 w-3 mr-1" />
+                            {store.productCount} Products
+                          </Badge>
                         </div>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-bold text-lg line-clamp-1">
-                        {store.store_name}
-                      </h3>
-                      {(store.city || store.region) && (
-                        <div className="flex items-center gap-1 text-sm text-muted-foreground mb-2">
-                          <MapPin className="h-3 w-3" />
-                          <span className="line-clamp-1">
-                            {[store.city, store.region].filter(Boolean).join(', ')}
-                          </span>
-                        </div>
-                      )}
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline">
-                          <Package className="h-3 w-3 mr-1" />
-                          {store.productCount} Products
-                        </Badge>
                       </div>
                     </div>
-                  </div>
-                  {store.description && (
-                    <p className="text-sm text-muted-foreground mt-3 line-clamp-2">
-                      {store.description}
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-      </div>
+                    {store.description && (
+                      <p className="text-sm text-muted-foreground mt-4 line-clamp-2 leading-relaxed">
+                        {store.description}
+                      </p>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
 
-      <BottomNav />
-    </div>
+        <BottomNav />
+      </div>
+    </>
   );
 };
 
 export default Stores;
+    
