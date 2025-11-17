@@ -40,6 +40,8 @@ import About from "./pages/About";
 import Terms from "./pages/Terms";
 import Privacy from "./pages/Privacy";
 import StoreSettings from "./pages/StoreSettings";
+import CategoryResults from "./pages/CategoryResults";
+import AdminBroadcast from "./pages/AdminBroadcast";
 import SecurityInfo from "./pages/SecurityInfo";
 import ProductManagement from "./pages/ProductManagement";
 

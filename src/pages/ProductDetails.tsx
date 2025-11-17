@@ -14,6 +14,7 @@ import ProductImageCarousel from '@/components/ProductImageCarousel';
 import ProductPerks from '@/components/ProductPerks';
 import KeyAttributes from '@/components/KeyAttributes';
 import ProductTags from '@/components/ProductTags';
+import { CategoryCarousel } from '@/components/CategoryCard';
 
 interface Product {
   id: string;
@@ -32,6 +33,7 @@ interface Product {
   inquiry_only: boolean;
   product_code: string;
   perks: Array<{ icon: string; label: string; color: string }>;
+  category_cards: string[];
   stores: {
     id: string;
     store_name: string;
@@ -277,6 +279,12 @@ const ProductDetails = () => {
         </Card>
 
         <ProductTags tags={product.tags} />
+
+        {product.category_cards && product.category_cards.length > 0 && (
+          <div className="my-4">
+            <CategoryCarousel categoryIds={product.category_cards} />
+          </div>
+        )}
 
         <Card className="shadow-sm cursor-pointer hover:shadow-md transition-all bg-primary/5 border-primary/20" onClick={() => navigate('/security-info')}>
           <CardContent className="p-4">
