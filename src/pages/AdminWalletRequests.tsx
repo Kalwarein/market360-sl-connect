@@ -99,8 +99,8 @@ const AdminWalletRequests = () => {
 
       if (error) throw error;
 
-      // If approved and deposit, update wallet balance
-      if (actionType === 'approve' && selectedRequest.type === 'deposit') {
+      // If approved, handle wallet balance updates
+      if (actionType === 'approve') {
         const { data: wallet } = await supabase
           .from('wallets')
           .select('id, balance_leones')
@@ -108,21 +108,47 @@ const AdminWalletRequests = () => {
           .single();
 
         if (wallet) {
-          await supabase
-            .from('wallets')
-            .update({
-              balance_leones: wallet.balance_leones + selectedRequest.amount
-            })
-            .eq('id', wallet.id);
+          if (selectedRequest.type === 'deposit') {
+            // Deduct 5% fee from deposit amount
+            const amountAfterFee = selectedRequest.amount * 0.95;
+            
+            await supabase
+              .from('wallets')
+              .update({
+                balance_leones: wallet.balance_leones + amountAfterFee
+              })
+              .eq('id', wallet.id);
 
-          // Create transaction record
-          await supabase.from('transactions').insert({
-            wallet_id: wallet.id,
-            amount: selectedRequest.amount,
-            type: 'deposit',
-            status: 'completed',
-            reference: `DEP-${selectedRequest.id}`,
-          });
+            // Create transaction record
+            await supabase.from('transactions').insert({
+              wallet_id: wallet.id,
+              amount: amountAfterFee,
+              type: 'deposit',
+              status: 'completed',
+              reference: `DEP-${selectedRequest.id}`,
+              metadata: { original_amount: selectedRequest.amount, fee_percentage: 5 }
+            });
+          } else if (selectedRequest.type === 'withdrawal') {
+            // Deduct withdrawal amount from wallet (fee already shown to user)
+            const amountAfterFee = selectedRequest.amount * 0.95;
+            
+            await supabase
+              .from('wallets')
+              .update({
+                balance_leones: wallet.balance_leones - selectedRequest.amount
+              })
+              .eq('id', wallet.id);
+
+            // Create transaction record
+            await supabase.from('transactions').insert({
+              wallet_id: wallet.id,
+              amount: -amountAfterFee,
+              type: 'withdrawal',
+              status: 'completed',
+              reference: `WTH-${selectedRequest.id}`,
+              metadata: { original_amount: selectedRequest.amount, fee_percentage: 5 }
+            });
+          }
         }
       }
 

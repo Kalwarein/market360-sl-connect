@@ -17,12 +17,15 @@ const Profile = () => {
   const navigate = useNavigate();
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [walletBalance, setWalletBalance] = useState<number | null>(null);
+  const [walletLoading, setWalletLoading] = useState(true);
   const [hasUnreadNotif, setHasUnreadNotif] = useState(false);
   const [sellerApplicationStatus, setSellerApplicationStatus] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
       loadProfile();
+      loadWalletBalance();
       loadUnreadNotifications();
       checkSellerApplication();
     }
@@ -41,6 +44,24 @@ const Profile = () => {
       console.error('Error loading profile:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadWalletBalance = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('wallets')
+        .select('balance_leones')
+        .eq('user_id', user?.id)
+        .single();
+
+      if (error) throw error;
+      setWalletBalance(data.balance_leones || 0);
+    } catch (error) {
+      console.error('Error loading wallet balance:', error);
+      setWalletBalance(0);
+    } finally {
+      setWalletLoading(false);
     }
   };
 
@@ -276,7 +297,11 @@ const Profile = () => {
             >
               <CardContent className="p-4 text-center">
                 <p className="text-xs text-gray-600 mb-1">Wallet</p>
-                <p className="text-2xl font-bold text-blue-600">${profile?.wallet_balance || 0}</p>
+                {walletLoading ? (
+                  <Skeleton className="h-8 w-20 mx-auto" />
+                ) : (
+                  <p className="text-2xl font-bold text-blue-600">SLL {walletBalance?.toLocaleString() || 0}</p>
+                )}
               </CardContent>
             </Card>
             
