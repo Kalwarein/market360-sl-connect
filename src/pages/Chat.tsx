@@ -6,9 +6,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ArrowLeft, Send, Package, Info } from 'lucide-react';
+import { ArrowLeft, Send, Package, Info, AtSign } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
+import ProductSelectorModal from '@/components/ProductSelectorModal';
 
 interface Message {
   id: string;
@@ -46,6 +47,7 @@ const Chat = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const [currentUserAvatar, setCurrentUserAvatar] = useState<string | null>(null);
+  const [showProductSelector, setShowProductSelector] = useState(false);
 
   useEffect(() => {
     if (!user) {
@@ -207,6 +209,47 @@ const Chat = () => {
     }
   };
 
+  const handleProductSelect = async (product: any) => {
+    try {
+      const productCard = {
+        id: product.id,
+        title: product.title,
+        price: product.price,
+        image: product.images[0],
+        category: product.category,
+      };
+
+      const { error } = await supabase.from('messages').insert([{
+        conversation_id: conversationId!,
+        sender_id: user?.id!,
+        body: JSON.stringify(productCard),
+        message_type: 'action',
+      }]);
+
+      if (error) throw error;
+
+      await supabase
+        .from('conversations')
+        .update({ last_message_at: new Date().toISOString() })
+        .eq('id', conversationId);
+
+      toast.success('Product card sent');
+    } catch (error) {
+      console.error('Error sending product card:', error);
+      toast.error('Failed to send product card');
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setNewMessage(value);
+    
+    // Detect @ mention at the start or after a space
+    if (value.endsWith('@') || value.includes(' @')) {
+      setShowProductSelector(true);
+    }
+  };
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -220,7 +263,28 @@ const Chat = () => {
   };
 
   const isSystemMessage = (message: Message) => {
-    return message.message_type === 'action' || message.body.startsWith('🔔');
+    return message.body.startsWith('🔔');
+  };
+
+  const isProductCard = (message: Message) => {
+    return message.message_type === 'action' || message.message_type === 'product_card';
+  };
+
+  const parseProductCard = (body: string) => {
+    try {
+      return JSON.parse(body);
+    } catch {
+      return null;
+    }
+  };
+
+  const handleAvatarClick = () => {
+    if (conversation?.other_user) {
+      const otherUserId = conversation.buyer_id === user?.id 
+        ? conversation.seller_id 
+        : conversation.buyer_id;
+      navigate(`/profile-viewer/${otherUserId}`);
+    }
   };
 
   if (loading) {
@@ -243,7 +307,10 @@ const Chat = () => {
             <ArrowLeft className="h-5 w-5" />
           </button>
           
-          <Avatar className="h-10 w-10">
+          <Avatar 
+            className="h-10 w-10 cursor-pointer"
+            onClick={handleAvatarClick}
+          >
             <AvatarImage src={conversation?.other_user?.avatar_url || undefined} />
             <AvatarFallback className="bg-primary/10 text-primary font-semibold">
               {conversation?.other_user?.name?.[0]?.toUpperCase() || 'U'}
@@ -251,7 +318,10 @@ const Chat = () => {
           </Avatar>
 
           <div className="flex-1">
-            <h3 className="font-semibold text-sm">
+            <h3 
+              className="font-semibold text-sm cursor-pointer hover:underline"
+              onClick={handleAvatarClick}
+            >
               {conversation?.other_user?.name || 'Unknown User'}
             </h3>
             {conversation?.products?.title && (
@@ -315,6 +385,7 @@ const Chat = () => {
           messages.map((message) => {
             const isOwn = message.sender_id === user?.id;
             const isSystem = isSystemMessage(message);
+            const isProdCard = isProductCard(message);
 
             if (isSystem) {
               return (
@@ -328,13 +399,49 @@ const Chat = () => {
               );
             }
 
+            if (isProdCard) {
+              const productData = parseProductCard(message.body);
+              if (!productData) return null;
+
+              return (
+                <div key={message.id} className="flex justify-center">
+                  <Card 
+                    className="max-w-[280px] cursor-pointer hover:shadow-lg transition-shadow"
+                    onClick={() => navigate(`/product/${productData.id}`)}
+                  >
+                    <CardContent className="p-3">
+                      <div className="flex gap-3">
+                        <img
+                          src={productData.image}
+                          alt={productData.title}
+                          className="w-16 h-16 object-cover rounded-lg"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-sm truncate">{productData.title}</p>
+                          <p className="text-primary font-bold text-sm">
+                            Le {productData.price?.toLocaleString()}
+                          </p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {productData.category}
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              );
+            }
+
             return (
               <div
                 key={message.id}
                 className={`flex gap-2 ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}
               >
                 {!isOwn && (
-                  <Avatar className="h-8 w-8 flex-shrink-0">
+                  <Avatar 
+                    className="h-8 w-8 flex-shrink-0 cursor-pointer"
+                    onClick={handleAvatarClick}
+                  >
                     <AvatarImage src={conversation?.other_user?.avatar_url || undefined} />
                     <AvatarFallback className="bg-primary/10 text-primary text-xs">
                       {conversation?.other_user?.name?.[0]?.toUpperCase() || 'U'}
@@ -377,11 +484,19 @@ const Chat = () => {
       {/* Input */}
       <div className="bg-white border-t p-4">
         <div className="flex gap-2 items-end">
+          <Button
+            onClick={() => setShowProductSelector(true)}
+            size="icon"
+            variant="ghost"
+            className="rounded-full h-10 w-10 flex-shrink-0"
+          >
+            <AtSign className="h-5 w-5" />
+          </Button>
           <Input
             value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
+            onChange={handleInputChange}
             onKeyPress={handleKeyPress}
-            placeholder="Type a message..."
+            placeholder="Type a message or @ to share products..."
             className="flex-1 rounded-full"
           />
           <Button
@@ -394,6 +509,12 @@ const Chat = () => {
           </Button>
         </div>
       </div>
+
+      <ProductSelectorModal
+        open={showProductSelector}
+        onClose={() => setShowProductSelector(false)}
+        onSelectProduct={handleProductSelect}
+      />
     </div>
   );
 };
