@@ -97,7 +97,7 @@ const App = () => (
           <Route path="/checkout" element={<Checkout />} />
           <Route path="/orders" element={<Orders />} />
           <Route path="/order-detail/:orderId" element={<OrderDetail />} />
-          <Route path="/seller-order-detail/:orderId" element={<SellerOrderDetail />} />
+          <Route path="/seller/order/:orderId" element={<ProtectedRoute><SellerOrderDetail /></ProtectedRoute>} />
               <Route path="/admin-broadcast" element={<AdminBroadcast />} />
               <Route path="/about" element={<ProtectedRoute><About /></ProtectedRoute>} />
               <Route path="/terms" element={<ProtectedRoute><Terms /></ProtectedRoute>} />
