@@ -18,11 +18,13 @@ import {
   AlertCircle,
   Clock,
   Truck,
-  XCircle
+  XCircle,
+  Shield
 } from 'lucide-react';
 import BottomNav from '@/components/BottomNav';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
+import { format } from 'date-fns';
 
 interface OrderDetail {
   id: string;
@@ -112,6 +114,94 @@ const OrderDetail = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCancelOrder = async () => {
+    if (!order || order.status !== 'pending') {
+      toast({
+        title: 'Cannot Cancel',
+        description: 'Order can only be cancelled when pending',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    try {
+      // Refund to buyer wallet
+      const { data: buyerWallet } = await supabase
+        .from('wallets')
+        .select('id, balance_leones')
+        .eq('user_id', user?.id)
+        .single();
+
+      if (buyerWallet) {
+        await supabase
+          .from('wallets')
+          .update({
+            balance_leones: Number(buyerWallet.balance_leones) + Number(order.total_amount)
+          })
+          .eq('id', buyerWallet.id);
+
+        await supabase.from('transactions').insert({
+          wallet_id: buyerWallet.id,
+          type: 'refund',
+          amount: order.total_amount,
+          status: 'completed',
+          reference: `Order ${order.id} cancelled`,
+          metadata: { order_id: order.id }
+        });
+      }
+
+      // Update order status
+      await supabase
+        .from('orders')
+        .update({ 
+          status: 'cancelled',
+          escrow_status: 'refunded'
+        })
+        .eq('id', order.id);
+
+      // Notify seller
+      await supabase.from('notifications').insert({
+        user_id: order.seller_id,
+        type: 'order',
+        title: 'Order Cancelled',
+        body: `Buyer cancelled order for ${order.products.title}`,
+        link_url: `/seller-order-detail/${order.id}`
+      });
+
+      // Send system message to chat
+      const { data: conversation } = await supabase
+        .from('conversations')
+        .select('id')
+        .eq('buyer_id', user?.id)
+        .eq('seller_id', order.seller_id)
+        .eq('product_id', order.products.id)
+        .single();
+
+      if (conversation) {
+        await supabase.from('messages').insert({
+          conversation_id: conversation.id,
+          sender_id: user?.id,
+          body: `🚫 Order cancelled by buyer. Refund of Le ${order.total_amount.toLocaleString()} processed.`,
+          message_type: 'action'
+        });
+      }
+
+      toast({
+        title: 'Order Cancelled',
+        description: 'Your refund has been processed'
+      });
+
+      loadOrderDetail();
+    } catch (error) {
+      console.error('Error cancelling order:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to cancel order',
+        variant: 'destructive'
+      });
     }
   };
 

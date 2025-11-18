@@ -754,6 +754,7 @@ export type Database = {
         | "delivered"
         | "completed"
         | "disputed"
+        | "cancelled"
       transaction_type: "deposit" | "withdrawal" | "earning" | "refund"
       user_role: "buyer" | "seller" | "admin"
     }
@@ -895,6 +896,7 @@ export const Constants = {
         "delivered",
         "completed",
         "disputed",
+        "cancelled",
       ],
       transaction_type: ["deposit", "withdrawal", "earning", "refund"],
       user_role: ["buyer", "seller", "admin"],
