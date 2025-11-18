@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Search } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface Product {
   id: string;
@@ -98,7 +99,17 @@ const ProductSelectorModal = ({ open, onClose, onSelectProduct }: ProductSelecto
         </div>
         <ScrollArea className="h-[400px]">
           {loading ? (
-            <div className="text-center py-8 text-muted-foreground">Loading products...</div>
+            <div className="space-y-2">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="flex items-center gap-3 p-3">
+                  <Skeleton className="w-12 h-12 rounded-lg" />
+                  <div className="flex-1 space-y-2">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-3 w-20" />
+                  </div>
+                </div>
+              ))}
+            </div>
           ) : filteredProducts.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               {searchQuery ? 'No products found' : 'No products available'}
