@@ -88,7 +88,7 @@ const ProductDetails = () => {
     }
   };
 
-  const handleChat = async () => {
+  const handleChat = async (isEnquiry = false) => {
     if (!product) return;
 
     if (!user) {
@@ -110,23 +110,46 @@ const ProductDetails = () => {
         .eq('product_id', product.id)
         .single();
 
-      if (existing) {
-        navigate(`/chat/${existing.id}`);
-        return;
+      let conversationId = existing?.id;
+
+      if (!existing) {
+        const { data: newConvo, error } = await supabase
+          .from('conversations')
+          .insert({
+            buyer_id: user.id,
+            seller_id: product.stores.owner_id,
+            product_id: product.id,
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+        conversationId = newConvo.id;
       }
 
-      const { data: newConvo, error } = await supabase
-        .from('conversations')
-        .insert({
-          buyer_id: user.id,
-          seller_id: product.stores.owner_id,
-          product_id: product.id,
-        })
-        .select()
-        .single();
+      if (isEnquiry && conversationId) {
+        const productCard = {
+          id: product.id,
+          title: product.title,
+          price: product.price,
+          image: product.images[0],
+          category: product.category,
+        };
 
-      if (error) throw error;
-      navigate(`/chat/${newConvo.id}`);
+        await supabase.from('messages').insert({
+          conversation_id: conversationId,
+          sender_id: user.id,
+          body: JSON.stringify(productCard),
+          message_type: 'action',
+        });
+
+        await supabase
+          .from('conversations')
+          .update({ last_message_at: new Date().toISOString() })
+          .eq('id', conversationId);
+      }
+
+      navigate(`/chat/${conversationId}`);
     } catch (error) {
       console.error('Error starting chat:', error);
       toast({
@@ -306,22 +329,25 @@ const ProductDetails = () => {
 
       {!product.inquiry_only && (
         <div className="fixed bottom-0 left-0 right-0 bg-background border-t p-4 flex gap-3 z-20">
-          <Button variant="outline" className="flex-1" onClick={handleChat}>
+          <Button variant="outline" className="flex-1" onClick={() => handleChat(false)}>
             <MessageSquare className="h-4 w-4 mr-2" />
-            Chat Now
+            Chat
+          </Button>
+          <Button variant="outline" className="flex-1" onClick={() => handleChat(true)}>
+            Enquiry
           </Button>
           <Button className="flex-1" onClick={handleAddToCart}>
             <ShoppingCart className="h-4 w-4 mr-2" />
-            Add to Cart
+            Add
           </Button>
         </div>
       )}
       
       {product.inquiry_only && (
         <div className="fixed bottom-0 left-0 right-0 bg-background border-t p-4 z-20">
-          <Button className="w-full" onClick={handleChat}>
+          <Button className="w-full" onClick={() => handleChat(true)}>
             <MessageSquare className="h-4 w-4 mr-2" />
-            Inquire Now
+            Enquire Now
           </Button>
         </div>
       )}
