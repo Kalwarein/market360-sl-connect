@@ -50,7 +50,8 @@ import CategoryResults from "./pages/CategoryResults";
 import AdminBroadcast from "./pages/AdminBroadcast";
 import SecurityInfo from "./pages/SecurityInfo";
 import ProductManagement from "./pages/ProductManagement";
-import Perks from "./pages/Perks"; // <-- Added Perks page import
+import Perks from "./pages/Perks";
+import ProfileViewer from "./pages/ProfileViewer";
 
 const queryClient = new QueryClient();
 
@@ -70,6 +71,7 @@ const App = () => (
               <Route path="/categories" element={<ProtectedRoute><Stores /></ProtectedRoute>} />
               <Route path="/messages" element={<ProtectedRoute><MessagesPage /></ProtectedRoute>} />
               <Route path="/chat/:conversationId" element={<ProtectedRoute><Chat /></ProtectedRoute>} />
+              <Route path="/profile-viewer/:userId" element={<ProtectedRoute><ProfileViewer /></ProtectedRoute>} />
               <Route path="/cart" element={<ProtectedRoute><Cart /></ProtectedRoute>} />
               <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
               <Route path="/become-seller" element={<ProtectedRoute><BecomeSeller /></ProtectedRoute>} />

@@ -219,10 +219,22 @@ const MessagesPage = () => {
                   : conversation.last_message.body
                 : 'No messages yet';
               
+              const handleConversationClick = async () => {
+                if (conversation.unread_count > 0) {
+                  await supabase
+                    .from('messages')
+                    .update({ read_at: new Date().toISOString() })
+                    .eq('conversation_id', conversation.id)
+                    .neq('sender_id', user?.id)
+                    .is('read_at', null);
+                }
+                navigate(`/chat/${conversation.id}`);
+              };
+
               return (
                 <Card
                   key={conversation.id}
-                  onClick={() => navigate(`/chat/${conversation.id}`)}
+                  onClick={handleConversationClick}
                   className="cursor-pointer hover:shadow-md transition-shadow"
                 >
                   <CardContent className="p-4">
