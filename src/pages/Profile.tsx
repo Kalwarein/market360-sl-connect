@@ -269,13 +269,13 @@ const Profile = () => {
               <Avatar className="h-20 w-20 rounded-full border-2 border-gray-200">
                 <AvatarImage src={profile?.avatar_url || "https://i.imghippo.com/files/mJWJ8998ds.jpg"} />
                 <AvatarFallback className="text-xl font-semibold">
-                  {profile?.name?.charAt(0) || 'U'}
+                  {profile?.name?.charAt(0) || (user?.user_metadata?.name?.charAt(0)) || (user?.email?.charAt(0)?.toUpperCase()) || 'U'}
                 </AvatarFallback>
               </Avatar>
               
               <div className="flex-1">
                 <div className="flex items-center gap-2 mb-1">
-                  <h1 className="text-2xl font-bold text-gray-900">{profile?.name || 'User'}</h1>
+                  <h1 className="text-2xl font-bold text-gray-900">{profile?.name || (user?.user_metadata?.name as string) || user?.email}</h1>
                   <button
                     onClick={() => navigate('/settings')}
                     className="p-1 hover:bg-gray-100 rounded-full transition-colors"
@@ -283,7 +283,7 @@ const Profile = () => {
                     <Edit2 className="h-5 w-5 text-gray-500" />
                   </button>
                 </div>
-                <p className="text-sm text-gray-600">{profile?.email}</p>
+                <p className="text-sm text-gray-600">{profile?.email || user?.email}</p>
                 {profile?.phone && <p className="text-sm text-gray-600">{profile?.phone}</p>}
               </div>
             </div>
