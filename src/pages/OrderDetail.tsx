@@ -169,7 +169,7 @@ const OrderDetail = () => {
         type: 'order',
         title: 'Order Cancelled',
         body: `Buyer cancelled order for ${order.products.title}`,
-        link_url: `/seller-order-detail/${order.id}`
+        link_url: `/seller/order/${order.id}`
       });
 
       // Send system message to chat
