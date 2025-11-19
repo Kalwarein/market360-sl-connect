@@ -7,20 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import {
-  ArrowLeft,
-  Package,
-  MapPin,
-  Phone,
-  User,
-  MessageSquare,
-  CheckCircle2,
-  AlertCircle,
-  Clock,
-  Truck,
-  XCircle,
-  Shield
-} from 'lucide-react';
+import { ArrowLeft, Package, MapPin, Phone, User, MessageSquare, CheckCircle2, AlertCircle, Clock, Truck, XCircle, Shield } from 'lucide-react';
 import BottomNav from '@/components/BottomNav';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
@@ -41,17 +28,8 @@ interface OrderDetail {
   shipping_region: string;
   shipping_country: string;
   delivery_notes: string;
-  products: {
-    id: string;
-    title: string;
-    images: string[];
-    product_code: string;
-    price: number;
-  };
-  stores: {
-    store_name: string;
-    logo_url: string;
-  };
+  products: { id: string; title: string; images: string[]; product_code: string; price: number; };
+  stores: { store_name: string; logo_url: string; };
   seller_id: string;
 }
 
@@ -68,278 +46,61 @@ const OrderDetail = () => {
   const [disputeReason, setDisputeReason] = useState('');
 
   useEffect(() => {
-    if (orderId && user) {
-      loadOrderDetail();
-    }
+    if (orderId && user) loadOrderDetail();
   }, [orderId, user]);
 
   const loadOrderDetail = async () => {
     try {
-      const { data, error } = await supabase
-        .from('orders')
-        .select(`
-          *,
-          products:product_id (
-            id,
-            title,
-            images,
-            product_code,
-            price,
-            store_id
-          )
-        `)
-        .eq('id', orderId)
-        .eq('buyer_id', user?.id)
-        .single();
-
+      const { data, error } = await supabase.from('orders').select(`*, products:product_id (id, title, images, product_code, price, store_id)`).eq('id', orderId).eq('buyer_id', user?.id).single();
       if (error) throw error;
-
       if (data && data.products) {
-        const { data: store } = await supabase
-          .from('stores')
-          .select('store_name, logo_url')
-          .eq('id', data.products.store_id)
-          .single();
-
-        setOrder({
-          ...data,
-          stores: store || { store_name: '', logo_url: '' }
-        } as any);
+        const { data: store } = await supabase.from('stores').select('store_name, logo_url').eq('id', data.products.store_id).single();
+        setOrder({ ...data, stores: store || { store_name: '', logo_url: '' } } as any);
       }
     } catch (error) {
       console.error('Error loading order:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to load order details',
-        variant: 'destructive'
-      });
+      toast({ title: 'Error', description: 'Failed to load order details', variant: 'destructive' });
     } finally {
       setLoading(false);
     }
   };
 
   const handleCancelOrder = async () => {
-    if (!order || order.status !== 'pending') {
-      toast({
-        title: 'Cannot Cancel',
-        description: 'Order can only be cancelled when pending',
-        variant: 'destructive'
-      });
-      return;
-    }
-
+    if (!order || order.status !== 'pending') return;
     try {
-      // Refund to buyer wallet
-      const { data: buyerWallet } = await supabase
-        .from('wallets')
-        .select('id, balance_leones')
-        .eq('user_id', user?.id)
-        .single();
-
-      if (buyerWallet) {
-        await supabase
-          .from('wallets')
-          .update({
-            balance_leones: Number(buyerWallet.balance_leones) + Number(order.total_amount)
-          })
-          .eq('id', buyerWallet.id);
-
-        await supabase.from('transactions').insert({
-          wallet_id: buyerWallet.id,
-          type: 'refund',
-          amount: order.total_amount,
-          status: 'completed',
-          reference: `Order ${order.id} cancelled`,
-          metadata: { order_id: order.id }
-        });
-      }
-
-      // Update order status
-      await supabase
-        .from('orders')
-        .update({ 
-          status: 'cancelled',
-          escrow_status: 'refunded'
-        })
-        .eq('id', order.id);
-
-      // Notify seller via edge function
-      try {
-        await supabase.functions.invoke('create-order-notification', {
-          body: {
-            user_id: order.seller_id,
-            type: 'order',
-            title: 'Order Cancelled',
-            body: `Buyer cancelled order for ${order.products.title}`,
-            link_url: `/seller/order/${order.id}`
-          }
-        });
-      } catch (notifError) {
-        console.error('Failed to send notification:', notifError);
-      }
-
-      // Send system message to chat
-      const { data: conversation } = await supabase
-        .from('conversations')
-        .select('id')
-        .eq('buyer_id', user?.id)
-        .eq('seller_id', order.seller_id)
-        .eq('product_id', order.products.id)
-        .single();
-
-      if (conversation) {
-        await supabase.from('messages').insert({
-          conversation_id: conversation.id,
-          sender_id: user?.id,
-          body: `🚫 Order cancelled by buyer. Refund of Le ${order.total_amount.toLocaleString()} processed.`,
-          message_type: 'action'
-        });
-      }
-
-      toast({
-        title: 'Order Cancelled',
-        description: 'Your refund has been processed'
-      });
-
+      setShowCancelDialog(false);
+      const { error } = await supabase.functions.invoke('process-order-refund', { body: { order_id: order.id, refund_type: 'buyer_cancel', initiator_id: user?.id } });
+      if (error) throw error;
+      toast({ title: '✅ Order Cancelled', description: 'Your refund has been processed to your wallet', duration: 5000 });
       loadOrderDetail();
     } catch (error) {
-      console.error('Error cancelling order:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to cancel order',
-        variant: 'destructive'
-      });
+      toast({ title: 'Error', description: 'Failed to cancel order', variant: 'destructive' });
     }
   };
 
   const handleConfirmReceived = async () => {
     try {
-      // Release escrow funds to seller
-      const { data: sellerWallet } = await supabase
-        .from('wallets')
-        .select('id, balance_leones')
-        .eq('user_id', order?.seller_id)
-        .single();
-
-      if (sellerWallet) {
-        await supabase
-          .from('wallets')
-          .update({
-            balance_leones: Number(sellerWallet.balance_leones) + Number(order?.escrow_amount)
-          })
-          .eq('id', sellerWallet.id);
-
-        // Create transaction record
-        await supabase.from('transactions').insert({
-          wallet_id: sellerWallet.id,
-          type: 'earning',
-          amount: order?.escrow_amount,
-          status: 'completed',
-          reference: `Order #${order?.id.slice(0, 8)} - Escrow released`
-        });
-      }
-
-      // Update order status
-      await supabase
-        .from('orders')
-        .update({
-          status: 'completed',
-          escrow_status: 'released'
-        })
-        .eq('id', orderId);
-
-      // Notify seller via edge function
-      try {
-        await supabase.functions.invoke('create-order-notification', {
-          body: {
-            user_id: order?.seller_id,
-            type: 'order',
-            title: 'Order Completed',
-            body: `Buyer confirmed receipt. Funds released to your wallet.`,
-            link_url: `/seller-dashboard`
-          }
-        });
-      } catch (notifError) {
-        console.error('Failed to send notification:', notifError);
-      }
-
-      toast({
-        title: 'Order Completed',
-        description: 'Thank you! Funds have been released to the seller.'
-      });
-
       setShowConfirmDialog(false);
+      const { error } = await supabase.functions.invoke('release-escrow', { body: { order_id: orderId, buyer_id: user?.id } });
+      if (error) throw error;
+      toast({ title: '✅ Order Completed', description: 'Funds released to seller. Thank you!', duration: 5000 });
       loadOrderDetail();
     } catch (error) {
-      console.error('Error confirming order:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to confirm order',
-        variant: 'destructive'
-      });
+      toast({ title: 'Error', description: 'Failed to confirm order', variant: 'destructive' });
     }
   };
 
   const handleReportProblem = async () => {
-    if (!disputeReason.trim()) {
-      toast({
-        title: 'Required',
-        description: 'Please describe the problem',
-        variant: 'destructive'
-      });
-      return;
-    }
-
+    if (!disputeReason.trim()) return;
     try {
-      await supabase
-        .from('orders')
-        .update({
-          status: 'disputed',
-          dispute_reason: disputeReason,
-          dispute_opened_at: new Date().toISOString(),
-          escrow_status: 'frozen'
-        })
-        .eq('id', orderId);
-
-      // Notify admin via edge function
-      const { data: admins } = await supabase
-        .from('user_roles')
-        .select('user_id')
-        .eq('role', 'admin');
-
-      if (admins && admins.length > 0) {
-        // Send notification to each admin
-        for (const admin of admins) {
-          try {
-            await supabase.functions.invoke('create-order-notification', {
-              body: {
-                user_id: admin.user_id,
-                type: 'order',
-                title: 'Order Dispute',
-                body: `Order ${orderId?.slice(0, 8)} has been disputed by buyer`,
-                link_url: `/admin/orders`
-              }
-            });
-          } catch (notifError) {
-            console.error('Failed to send admin notification:', notifError);
-          }
-        }
-      }
-
-      toast({
-        title: 'Dispute Opened',
-        description: 'Admin will review your case shortly'
-      });
-
       setShowDisputeDialog(false);
+      const { error } = await supabase.functions.invoke('process-order-refund', { body: { order_id: orderId, refund_type: 'dispute', reason: disputeReason, initiator_id: user?.id } });
+      if (error) throw error;
+      toast({ title: '⚠️ Dispute Filed', description: 'Refund processed. Admin will review.', duration: 5000 });
+      setDisputeReason('');
       loadOrderDetail();
     } catch (error) {
-      console.error('Error reporting problem:', error);
-      toast({
-        title: 'Error',
-        description: 'Failed to report problem',
-        variant: 'destructive'
-      });
+      toast({ title: 'Error', description: 'Failed to file dispute', variant: 'destructive' });
     }
   };
 
@@ -381,338 +142,28 @@ const OrderDetail = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background pb-20">
-        <div className="p-4 space-y-4">
-          <Skeleton className="h-40 w-full" />
-          <Skeleton className="h-32 w-full" />
-          <Skeleton className="h-32 w-full" />
-        </div>
-        <BottomNav />
-      </div>
-    );
-  }
-
-  if (!order) {
-    return (
-      <div className="min-h-screen bg-background pb-20">
-        <div className="p-4">
-          <Card>
-            <CardContent className="p-8 text-center">
-              <XCircle className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-              <p className="text-muted-foreground mb-4">Order not found</p>
-              <Button onClick={() => navigate('/orders')}>Back to Orders</Button>
-            </CardContent>
-          </Card>
-        </div>
-        <BottomNav />
-      </div>
-    );
-  }
+  if (loading) return <div className="min-h-screen bg-background pb-20"><div className="p-4 space-y-4"><Skeleton className="h-40 w-full" /><Skeleton className="h-32 w-full" /></div><BottomNav /></div>;
+  if (!order) return <div className="min-h-screen bg-background pb-20 flex items-center justify-center"><div className="text-center"><XCircle className="h-12 w-12 mx-auto mb-4 text-muted-foreground" /><h2 className="text-xl font-semibold mb-2">Order Not Found</h2><Button onClick={() => navigate('/orders')}>Back to Orders</Button></div><BottomNav /></div>;
 
   return (
-    <div className="min-h-screen bg-background pb-20">
+    <div className="min-h-screen bg-background pb-24">
       <div className="sticky top-0 z-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b p-4">
         <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => navigate('/orders')}
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div className="flex-1">
-            <h1 className="text-xl font-semibold">Order Details</h1>
-            <p className="text-xs text-muted-foreground">#{order.id.slice(0, 8)}</p>
-          </div>
-          <Badge className={`${getStatusColor(order.status)} text-white`}>
-            {order.status}
-          </Badge>
+          <Button variant="ghost" size="icon" onClick={() => navigate('/orders')}><ArrowLeft className="h-5 w-5" /></Button>
+          <div><h1 className="text-lg font-semibold">Order Details</h1><p className="text-sm text-muted-foreground">#{order.id.slice(0, 8)}</p></div>
         </div>
       </div>
-
       <div className="p-4 space-y-4">
-        {/* Order Timeline */}
-        <Card>
-          <CardContent className="p-4">
-            <h2 className="font-semibold mb-3 flex items-center gap-2">
-              {getStatusIcon(order.status)}
-              Order Timeline
-            </h2>
-            <div className="space-y-3">
-              <div className="flex items-start gap-3">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${order.status === 'pending' ? 'bg-primary' : 'bg-muted'}`}>
-                  <Clock className="h-4 w-4 text-white" />
-                </div>
-                <div>
-                  <p className="font-medium text-sm">Order Placed</p>
-                  <p className="text-xs text-muted-foreground">
-                    {new Date(order.created_at).toLocaleString()}
-                  </p>
-                </div>
-              </div>
-              {['processing', 'packed', 'shipped', 'delivered', 'completed'].includes(order.status) && (
-                <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center bg-primary">
-                    <Package className="h-4 w-4 text-white" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-sm">Processing</p>
-                    <p className="text-xs text-muted-foreground">Seller is preparing your order</p>
-                  </div>
-                </div>
-              )}
-              {['shipped', 'delivered', 'completed'].includes(order.status) && (
-                <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center bg-primary">
-                    <Truck className="h-4 w-4 text-white" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-sm">Shipped</p>
-                    <p className="text-xs text-muted-foreground">Order is on the way</p>
-                  </div>
-                </div>
-              )}
-              {['completed'].includes(order.status) && (
-                <div className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-full flex items-center justify-center bg-green-500">
-                    <CheckCircle2 className="h-4 w-4 text-white" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-sm">Completed</p>
-                    <p className="text-xs text-muted-foreground">Order delivered successfully</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-md">
-          <CardContent className="p-6">
-            <h2 className="font-semibold mb-4 text-lg">Product Details</h2>
-            <div className="flex gap-4 mb-4">
-              <div className="flex-shrink-0">
-                {order.products.images?.[0] ? (
-                  <img
-                    src={order.products.images[0]}
-                    alt={order.products.title}
-                    className="w-32 h-32 rounded-lg object-cover shadow-sm"
-                  />
-                ) : (
-                  <div className="w-32 h-32 bg-muted rounded-lg flex items-center justify-center">
-                    <Package className="h-16 w-16 text-muted-foreground" />
-                  </div>
-                )}
-              </div>
-              <div className="flex-1">
-                <h3 className="font-bold text-xl mb-2">{order.products.title}</h3>
-                <p className="text-sm text-muted-foreground mb-1">{order.stores.store_name}</p>
-                <p className="text-xs text-muted-foreground mb-3">{order.products.product_code}</p>
-                <div className="flex items-center gap-4 mb-2">
-                  <span className="text-sm">Quantity: <span className="font-semibold">{order.quantity}</span></span>
-                  <Badge
-                    variant="secondary"
-                    className={`${getStatusColor(order.status)} text-white`}
-                  >
-                    <span className="flex items-center gap-1">
-                      {getStatusIcon(order.status)}
-                      <span className="capitalize">{order.status}</span>
-                    </span>
-                  </Badge>
-                </div>
-                <p className="text-2xl font-bold text-primary">
-                  Le {order.total_amount.toLocaleString()}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Delivery Info */}
-        <Card>
-          <CardContent className="p-4">
-            <h2 className="font-semibold mb-3 flex items-center gap-2">
-              <MapPin className="h-5 w-5" />
-              Delivery Information
-            </h2>
-            <div className="space-y-2 text-sm">
-              <div className="flex items-center gap-2">
-                <User className="h-4 w-4 text-muted-foreground" />
-                <span>{order.delivery_name}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Phone className="h-4 w-4 text-muted-foreground" />
-                <span>{order.delivery_phone}</span>
-              </div>
-              <div className="flex items-start gap-2">
-                <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
-                <div>
-                  <p>{order.shipping_address}</p>
-                  <p>{order.shipping_city}, {order.shipping_region}</p>
-                  <p>{order.shipping_country}</p>
-                </div>
-              </div>
-              {order.delivery_notes && (
-                <div className="mt-2 p-2 bg-muted rounded">
-                  <p className="text-xs font-medium">Notes:</p>
-                  <p className="text-xs">{order.delivery_notes}</p>
-                </div>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Escrow Status */}
-        <Card>
-          <CardContent className="p-4">
-            <h2 className="font-semibold mb-3">Payment Status</h2>
-            <div className="flex items-center justify-between">
-              <span className="text-sm">Escrow Status:</span>
-              <Badge variant={order.escrow_status === 'released' ? 'default' : 'secondary'}>
-                {order.escrow_status}
-              </Badge>
-            </div>
-            <p className="text-xs text-muted-foreground mt-2">
-              {order.escrow_status === 'holding' 
-                ? 'Your payment is securely held until you confirm delivery' 
-                : 'Payment has been released to seller'}
-            </p>
-          </CardContent>
-        </Card>
-
-        {/* Action Buttons */}
-        {order.status !== 'completed' && order.status !== 'disputed' && order.status !== 'cancelled' && (
-          <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
-              <Button
-                variant="outline"
-                onClick={() => navigate(`/chat/${order.seller_id}`)}
-                className="w-full"
-              >
-                <MessageSquare className="h-4 w-4 mr-2" />
-                Chat Seller
-              </Button>
-              {order.status === 'delivered' && (
-                <Button
-                  onClick={() => setShowConfirmDialog(true)}
-                  className="w-full"
-                >
-                  <CheckCircle2 className="h-4 w-4 mr-2" />
-                  Confirm Received
-                </Button>
-              )}
-            </div>
-
-            {/* Cancel Order Button - Only for pending/processing orders */}
-            {(order.status === 'pending' || order.status === 'processing') && (
-              <Button
-                variant="outline"
-                onClick={() => setShowCancelDialog(true)}
-                className="w-full border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
-              >
-                <XCircle className="h-4 w-4 mr-2" />
-                Cancel Order
-              </Button>
-            )}
-
-            {/* Report Problem Button */}
-            <Button
-              variant="destructive"
-              onClick={() => setShowDisputeDialog(true)}
-              className="w-full"
-            >
-              <AlertCircle className="h-4 w-4 mr-2" />
-              Report Problem
-            </Button>
-          </div>
-        )}
+        <Card><CardContent className="p-4"><div className="flex items-center gap-3"><div className="p-3 rounded-full bg-primary"><Package className="h-5 w-5" /></div><div className="flex-1"><p className="font-semibold text-lg capitalize">{order.status}</p><p className="text-sm text-muted-foreground">{format(new Date(order.created_at), 'MMM d, yyyy h:mm a')}</p></div><Badge variant="outline" className="capitalize">{order.escrow_status}</Badge></div></CardContent></Card>
+        <div className="space-y-2">
+          {order.status === 'delivered' && <Button onClick={() => setShowConfirmDialog(true)} className="w-full" size="lg"><CheckCircle2 className="mr-2 h-5 w-5" />Confirm Received</Button>}
+          {order.status === 'pending' && <Button onClick={() => setShowCancelDialog(true)} variant="destructive" className="w-full" size="lg"><XCircle className="mr-2 h-5 w-5" />Cancel Order</Button>}
+          {!['cancelled', 'completed', 'disputed'].includes(order.status) && <Button onClick={() => setShowDisputeDialog(true)} variant="outline" className="w-full" size="lg"><AlertCircle className="mr-2 h-5 w-5" />Report Problem</Button>}
+        </div>
       </div>
-
-      {/* Confirm Dialog */}
-      <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Confirm Order Received?</DialogTitle>
-          </DialogHeader>
-          <p className="text-sm text-muted-foreground">
-            By confirming, you acknowledge that you have received the product in good condition. 
-            The payment will be released to the seller.
-          </p>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowConfirmDialog(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleConfirmReceived}>
-              Confirm Receipt
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Dispute Dialog */}
-      <Dialog open={showDisputeDialog} onOpenChange={setShowDisputeDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Report a Problem</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Describe the issue with your order. Our admin team will review and help resolve it.
-            </p>
-            <Textarea
-              value={disputeReason}
-              onChange={(e) => setDisputeReason(e.target.value)}
-              placeholder="Describe the problem..."
-              rows={4}
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowDisputeDialog(false)}>
-              Cancel
-            </Button>
-            <Button variant="destructive" onClick={handleReportProblem}>
-              Submit Report
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Cancel Order Dialog */}
-      <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Cancel Order?</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Are you sure you want to cancel this order? Your payment of Le {order?.total_amount.toLocaleString()} will be refunded to your wallet immediately.
-            </p>
-            <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-              <p className="text-xs font-medium text-amber-800 mb-1">⚠️ Important:</p>
-              <p className="text-xs text-amber-900">
-                Once cancelled, this action cannot be undone. The seller will be notified immediately.
-              </p>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowCancelDialog(false)}>
-              Keep Order
-            </Button>
-            <Button 
-              variant="destructive" 
-              onClick={() => {
-                handleCancelOrder();
-                setShowCancelDialog(false);
-              }}
-            >
-              Yes, Cancel Order
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
+      <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}><DialogContent><DialogHeader><DialogTitle>Confirm Received?</DialogTitle></DialogHeader><p className="text-sm">Payment will be released to seller.</p><DialogFooter><Button variant="outline" onClick={() => setShowConfirmDialog(false)}>Cancel</Button><Button onClick={handleConfirmReceived}>Confirm</Button></DialogFooter></DialogContent></Dialog>
+      <Dialog open={showDisputeDialog} onOpenChange={setShowDisputeDialog}><DialogContent><DialogHeader><DialogTitle>Report Problem</DialogTitle></DialogHeader><Textarea placeholder="Describe the issue..." value={disputeReason} onChange={(e) => setDisputeReason(e.target.value)} rows={5} /><DialogFooter><Button variant="outline" onClick={() => setShowDisputeDialog(false)}>Cancel</Button><Button onClick={handleReportProblem} variant="destructive">Submit</Button></DialogFooter></DialogContent></Dialog>
+      <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}><DialogContent><DialogHeader><DialogTitle>Cancel Order?</DialogTitle></DialogHeader><p className="text-sm">Payment will be refunded to your wallet.</p><DialogFooter><Button variant="outline" onClick={() => setShowCancelDialog(false)}>Keep</Button><Button onClick={handleCancelOrder} variant="destructive">Cancel Order</Button></DialogFooter></DialogContent></Dialog>
       <BottomNav />
     </div>
   );

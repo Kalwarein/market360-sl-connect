@@ -228,76 +228,20 @@ const SellerOrderDetail = () => {
     }
 
     try {
-      // Refund to buyer wallet
-      const { data: buyerWallet } = await supabase
-        .from('wallets')
-        .select('id, balance_leones')
-        .eq('user_id', order.buyer_id)
-        .single();
+      const { error } = await supabase.functions.invoke('process-order-refund', {
+        body: {
+          order_id: order.id,
+          refund_type: 'seller_decline',
+          initiator_id: user?.id
+        }
+      });
 
-      if (buyerWallet) {
-        await supabase
-          .from('wallets')
-          .update({
-            balance_leones: Number(buyerWallet.balance_leones) + Number(order.total_amount)
-          })
-          .eq('id', buyerWallet.id);
-
-        await supabase.from('transactions').insert({
-          wallet_id: buyerWallet.id,
-          type: 'refund',
-          amount: order.total_amount,
-          status: 'completed',
-          reference: `Order ${order.id} declined by seller`,
-          metadata: { order_id: order.id }
-        });
-      }
-
-      // Update order status
-      await supabase
-        .from('orders')
-        .update({ 
-          status: 'cancelled',
-          escrow_status: 'refunded'
-        })
-        .eq('id', order.id);
-
-      // Notify buyer via edge function
-      try {
-        await supabase.functions.invoke('create-order-notification', {
-          body: {
-            user_id: order.buyer_id,
-            type: 'order',
-            title: 'Order Declined',
-            body: `Seller declined your order for ${order.products.title}. Refund processed.`,
-            link_url: `/order-detail/${order.id}`
-          }
-        });
-      } catch (notifError) {
-        console.error('Failed to send notification:', notifError);
-      }
-
-      // Send system message to chat
-      const { data: conversation } = await supabase
-        .from('conversations')
-        .select('id')
-        .eq('buyer_id', order.buyer_id)
-        .eq('seller_id', user?.id)
-        .eq('product_id', order.products.id)
-        .single();
-
-      if (conversation) {
-        await supabase.from('messages').insert({
-          conversation_id: conversation.id,
-          sender_id: user?.id,
-          body: `🚫 Seller declined order. Refund of Le ${order.total_amount.toLocaleString()} processed.`,
-          message_type: 'action'
-        });
-      }
+      if (error) throw error;
 
       toast({
-        title: 'Order Declined',
-        description: 'Buyer has been notified and refunded'
+        title: '✅ Order Declined',
+        description: 'Buyer has been notified and refunded',
+        duration: 5000
       });
 
       loadOrderDetail();
@@ -305,7 +249,7 @@ const SellerOrderDetail = () => {
       console.error('Error declining order:', error);
       toast({
         title: 'Error',
-        description: 'Failed to decline order',
+        description: 'Failed to decline order. Please try again.',
         variant: 'destructive'
       });
     }
