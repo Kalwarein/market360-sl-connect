@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Search } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Button } from '@/components/ui/button';
 
 interface Product {
   id: string;
@@ -104,60 +104,79 @@ const ProductSelectorModal = ({ open, onClose, onSelectProduct }: ProductSelecto
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Select Product</DialogTitle>
-        </DialogHeader>
-        <div className="relative mb-4">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search products..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
-          />
+      <DialogContent className="fixed inset-0 max-w-full w-full h-full rounded-none p-0 border-0 bg-background animate-fade-in z-[100]">
+        {/* Header with close button */}
+        <div className="sticky top-0 z-10 bg-background border-b border-border px-6 py-4 flex items-center justify-between shadow-sm">
+          <h2 className="text-2xl font-semibold">Select a Product</h2>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
+            className="rounded-full h-10 w-10 hover:bg-muted"
+          >
+            <X className="h-5 w-5" />
+          </Button>
         </div>
-        <ScrollArea className="h-[400px]">
-          {loading ? (
-            <div className="space-y-2">
-              {[...Array(5)].map((_, i) => (
-                <div key={i} className="flex items-center gap-3 p-3">
-                  <Skeleton className="w-12 h-12 rounded-lg" />
-                  <div className="flex-1 space-y-2">
-                    <Skeleton className="h-4 w-32" />
-                    <Skeleton className="h-3 w-20" />
+
+        {/* Search bar */}
+        <div className="px-6 py-4 border-b border-border bg-muted/30">
+          <div className="relative max-w-2xl mx-auto">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+            <Input
+              placeholder="Search products..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 h-12 text-base"
+            />
+          </div>
+        </div>
+
+        {/* Scrollable product list */}
+        <div className="overflow-y-auto h-[calc(100vh-140px)] px-6 py-6">
+          <div className="max-w-2xl mx-auto space-y-3">
+            {loading ? (
+              <div className="space-y-3">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className="flex items-center gap-4 p-4 rounded-xl border bg-card shadow-sm">
+                    <Skeleton className="h-20 w-20 rounded-lg" />
+                    <div className="flex-1 space-y-2">
+                      <Skeleton className="h-5 w-3/4" />
+                      <Skeleton className="h-4 w-1/2" />
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          ) : filteredProducts.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              {searchQuery ? 'No products found' : 'No products available'}
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {filteredProducts.map((product) => (
-                <button
-                  key={product.id}
-                  onClick={() => handleSelect(product)}
-                  className="w-full flex items-center gap-3 p-3 rounded-lg hover:bg-muted transition-colors text-left"
-                >
-                  <img
-                    src={product.images[0]}
-                    alt={product.title}
-                    className="w-12 h-12 object-cover rounded-lg"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">{product.title}</p>
-                    <p className="text-sm text-primary font-semibold">
-                      Le {product.price.toLocaleString()}
-                    </p>
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
-        </ScrollArea>
+                ))}
+              </div>
+            ) : filteredProducts.length === 0 ? (
+              <div className="text-center py-16 text-muted-foreground">
+                <p className="text-lg">No products found</p>
+                <p className="text-sm mt-2">Try searching with different keywords</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {filteredProducts.map((product) => (
+                  <button
+                    key={product.id}
+                    onClick={() => handleSelect(product)}
+                    className="w-full flex items-center gap-4 p-4 rounded-xl border bg-card hover:bg-accent transition-all duration-200 hover:shadow-md text-left hover:scale-[1.02]"
+                  >
+                    <img
+                      src={product.images[0] || '/placeholder.svg'}
+                      alt={product.title}
+                      className="h-20 w-20 object-cover rounded-lg"
+                    />
+                    <div className="flex-1">
+                      <h4 className="font-semibold line-clamp-2 mb-1">{product.title}</h4>
+                      <p className="text-lg font-bold text-[#0FA86C]">Le {product.price.toLocaleString()}</p>
+                      {product.moq && (
+                        <p className="text-xs text-muted-foreground mt-1">MOQ: {product.moq}</p>
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       </DialogContent>
     </Dialog>
   );
