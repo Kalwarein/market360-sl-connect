@@ -112,7 +112,7 @@ export default function Checkout() {
         if (!store) throw new Error("Store not found");
 
         // Create order
-        const { error: orderError } = await supabase
+        const { data: newOrder, error: orderError } = await supabase
           .from("orders")
           .insert({
             buyer_id: user.id,
@@ -129,18 +129,31 @@ export default function Checkout() {
             shipping_region: deliveryInfo.region,
             shipping_country: deliveryInfo.country,
             status: "pending"
-          });
+          })
+          .select()
+          .single();
 
         if (orderError) throw orderError;
 
-        // Send notification to seller
-        await supabase.from("notifications").insert({
-          user_id: store.owner_id,
-          type: "order",
-          title: "New Order Received",
-          body: `You have a new order for ${item.title}`,
-          link_url: "/seller-dashboard"
-        });
+        // Send notification to seller via edge function (bypasses RLS)
+        try {
+          await supabase.functions.invoke('create-order-notification', {
+            body: {
+              user_id: store.owner_id,
+              type: 'order',
+              title: 'New Order Received',
+              body: `You have a new order for ${item.title}`,
+              link_url: newOrder?.id ? `/seller/order/${newOrder.id}` : '/seller-dashboard',
+              metadata: {
+                order_id: newOrder?.id || null,
+                product_title: item.title
+              }
+            }
+          });
+        } catch (notifError) {
+          console.error('Failed to send notification:', notifError);
+          // Don't fail the order if notification fails
+        }
       });
 
       await Promise.all(orderPromises);

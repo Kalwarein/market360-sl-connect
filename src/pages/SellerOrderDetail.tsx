@@ -160,21 +160,27 @@ const SellerOrderDetail = () => {
 
       // For delivered status, create rich notification with product details
       if (newStatus === 'delivered') {
-        await supabase.from('notifications').insert({
-          user_id: order?.buyer_id,
-          type: 'order',
-          title: '📦 Order Delivered!',
-          body: `Your order for "${order?.products.title}" has been delivered. Please confirm receipt to complete the transaction.`,
-          link_url: `/order-arrival/${orderId}`,
-          image_url: order?.products.images[0],
-          metadata: { 
-            order_id: orderId, 
-            status: newStatus,
-            product_title: order?.products.title,
-            amount: order?.total_amount,
-            delivered_at: new Date().toISOString()
-          }
-        });
+        try {
+          await supabase.functions.invoke('create-order-notification', {
+            body: {
+              user_id: order?.buyer_id,
+              type: 'order',
+              title: '📦 Order Delivered!',
+              body: `Your order for "${order?.products.title}" has been delivered. Please confirm receipt to complete the transaction.`,
+              link_url: `/order-arrival/${orderId}`,
+              image_url: order?.products.images[0],
+              metadata: { 
+                order_id: orderId, 
+                status: newStatus,
+                product_title: order?.products.title,
+                amount: order?.total_amount,
+                delivered_at: new Date().toISOString()
+              }
+            }
+          });
+        } catch (notifError) {
+          console.error('Failed to send notification:', notifError);
+        }
       }
 
       // Send system message to chat
@@ -256,14 +262,20 @@ const SellerOrderDetail = () => {
         })
         .eq('id', order.id);
 
-      // Notify buyer
-      await supabase.from('notifications').insert({
-        user_id: order.buyer_id,
-        type: 'order',
-        title: 'Order Declined',
-        body: `Seller declined your order for ${order.products.title}. Refund processed.`,
-        link_url: `/order-detail/${order.id}`
-      });
+      // Notify buyer via edge function
+      try {
+        await supabase.functions.invoke('create-order-notification', {
+          body: {
+            user_id: order.buyer_id,
+            type: 'order',
+            title: 'Order Declined',
+            body: `Seller declined your order for ${order.products.title}. Refund processed.`,
+            link_url: `/order-detail/${order.id}`
+          }
+        });
+      } catch (notifError) {
+        console.error('Failed to send notification:', notifError);
+      }
 
       // Send system message to chat
       const { data: conversation } = await supabase

@@ -124,15 +124,21 @@ const OrderArrival = () => {
         metadata: { order_id: orderId, fee_deducted: fee }
       });
 
-      // Create notification for seller
-      await supabase.from('notifications').insert({
-        user_id: order?.seller_id,
-        type: 'order',
-        title: 'Payment Released! 🎉',
-        body: `Buyer confirmed delivery for ${order?.products?.title}. Le ${amountToRelease.toFixed(2)} added to your wallet.`,
-        link_url: `/seller/order/${orderId}`,
-        metadata: { order_id: orderId, amount: amountToRelease }
-      });
+      // Create notification for seller via edge function
+      try {
+        await supabase.functions.invoke('create-order-notification', {
+          body: {
+            user_id: order?.seller_id,
+            type: 'order',
+            title: 'Payment Released! 🎉',
+            body: `Buyer confirmed delivery for ${order?.products?.title}. Le ${amountToRelease.toFixed(2)} added to your wallet.`,
+            link_url: `/seller/order/${orderId}`,
+            metadata: { order_id: orderId, amount: amountToRelease }
+          }
+        });
+      } catch (notifError) {
+        console.error('Failed to send notification:', notifError);
+      }
 
       toast.success('Order confirmed! Thank you for shopping with Market360.');
       navigate('/orders');
