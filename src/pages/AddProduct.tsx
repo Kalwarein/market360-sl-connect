@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -7,14 +7,18 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { ArrowLeft, Upload, X, Package, DollarSign, FileText, Tags } from 'lucide-react';
+import { ArrowLeft, Upload, X, Package, DollarSign, FileText, Tags, Plus, Search } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { CATEGORY_OPTIONS } from '@/components/CategoryCard';
 import { Badge } from '@/components/ui/badge';
 import { MultiStepForm } from '@/components/MultiStepForm';
 import { NumericInput } from '@/components/NumericInput';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { LocationPicker } from '@/components/LocationPicker';
+import { PRODUCT_CATEGORIES } from '@/lib/productCategories';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from '@/components/ui/command';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Check } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 // Available perks with colors
 const AVAILABLE_PERKS = [
@@ -33,6 +37,9 @@ const AddProduct = () => {
   const [images, setImages] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [primaryImageIndex, setPrimaryImageIndex] = useState(0);
+  const [categorySearchOpen, setCategorySearchOpen] = useState(false);
+  const [customCategory, setCustomCategory] = useState('');
+  const [showCustomCategoryInput, setShowCustomCategoryInput] = useState(false);
   
   const [formData, setFormData] = useState({
     title: '',
@@ -52,6 +59,15 @@ const AddProduct = () => {
   });
   const [perks, setPerks] = useState<Array<{ icon: string; label: string; color: string }>>([]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+
+  // Combine standard categories with custom category if entered
+  const allCategories = useMemo(() => {
+    const categories = [...PRODUCT_CATEGORIES];
+    if (customCategory && !categories.includes(customCategory)) {
+      categories.push(customCategory);
+    }
+    return categories.sort();
+  }, [customCategory]);
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
@@ -266,24 +282,120 @@ const AddProduct = () => {
             />
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-3">
             <Label htmlFor="category">Category *</Label>
-            <Select value={formData.category} onValueChange={(value) => setFormData({ ...formData, category: value })}>
-              <SelectTrigger className="transition-all focus:ring-2 focus:ring-primary">
-                <SelectValue placeholder="Select category" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Electronics">Electronics</SelectItem>
-                <SelectItem value="Fashion">Fashion</SelectItem>
-                <SelectItem value="Home & Garden">Home & Garden</SelectItem>
-                <SelectItem value="Sports">Sports</SelectItem>
-                <SelectItem value="Beauty">Beauty</SelectItem>
-                <SelectItem value="Toys">Toys</SelectItem>
-                <SelectItem value="Automotive">Automotive</SelectItem>
-                <SelectItem value="Books">Books</SelectItem>
-                <SelectItem value="Other">Other</SelectItem>
-              </SelectContent>
-            </Select>
+            <Popover open={categorySearchOpen} onOpenChange={setCategorySearchOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={categorySearchOpen}
+                  className="w-full justify-between transition-all focus:ring-2 focus:ring-primary"
+                >
+                  {formData.category || "Search or select category..."}
+                  <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-full p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Search categories..." />
+                  <CommandEmpty>
+                    <div className="p-4 text-center space-y-2">
+                      <p className="text-sm text-muted-foreground">No category found.</p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setShowCustomCategoryInput(true);
+                          setCategorySearchOpen(false);
+                        }}
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Custom Category
+                      </Button>
+                    </div>
+                  </CommandEmpty>
+                  <CommandGroup className="max-h-64 overflow-auto">
+                    {allCategories.map((category) => (
+                      <CommandItem
+                        key={category}
+                        value={category}
+                        onSelect={(currentValue) => {
+                          setFormData({ ...formData, category: currentValue });
+                          setCategorySearchOpen(false);
+                        }}
+                      >
+                        <Check
+                          className={cn(
+                            "mr-2 h-4 w-4",
+                            formData.category === category ? "opacity-100" : "opacity-0"
+                          )}
+                        />
+                        {category}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </Command>
+              </PopoverContent>
+            </Popover>
+
+            {showCustomCategoryInput && (
+              <div className="flex gap-2 animate-fade-in">
+                <Input
+                  placeholder="Enter custom category name"
+                  value={customCategory}
+                  onChange={(e) => setCustomCategory(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && customCategory.trim()) {
+                      setFormData({ ...formData, category: customCategory.trim() });
+                      setShowCustomCategoryInput(false);
+                    }
+                  }}
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => {
+                    if (customCategory.trim()) {
+                      setFormData({ ...formData, category: customCategory.trim() });
+                      setShowCustomCategoryInput(false);
+                      toast({
+                        title: 'Custom category added',
+                        description: `"${customCategory}" has been added to your product`,
+                      });
+                    }
+                  }}
+                  disabled={!customCategory.trim()}
+                >
+                  Add
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    setShowCustomCategoryInput(false);
+                    setCustomCategory('');
+                  }}
+                >
+                  Cancel
+                </Button>
+              </div>
+            )}
+
+            {!showCustomCategoryInput && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowCustomCategoryInput(true)}
+                className="w-full"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Custom Category
+              </Button>
+            )}
           </div>
         </div>
       ),
