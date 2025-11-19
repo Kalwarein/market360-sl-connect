@@ -163,14 +163,20 @@ const OrderDetail = () => {
         })
         .eq('id', order.id);
 
-      // Notify seller
-      await supabase.from('notifications').insert({
-        user_id: order.seller_id,
-        type: 'order',
-        title: 'Order Cancelled',
-        body: `Buyer cancelled order for ${order.products.title}`,
-        link_url: `/seller/order/${order.id}`
-      });
+      // Notify seller via edge function
+      try {
+        await supabase.functions.invoke('create-order-notification', {
+          body: {
+            user_id: order.seller_id,
+            type: 'order',
+            title: 'Order Cancelled',
+            body: `Buyer cancelled order for ${order.products.title}`,
+            link_url: `/seller/order/${order.id}`
+          }
+        });
+      } catch (notifError) {
+        console.error('Failed to send notification:', notifError);
+      }
 
       // Send system message to chat
       const { data: conversation } = await supabase
@@ -242,14 +248,20 @@ const OrderDetail = () => {
         })
         .eq('id', orderId);
 
-      // Notify seller
-      await supabase.from('notifications').insert({
-        user_id: order?.seller_id,
-        type: 'order',
-        title: 'Order Completed',
-        body: `Buyer confirmed receipt. Funds released to your wallet.`,
-        link_url: `/seller-dashboard`
-      });
+      // Notify seller via edge function
+      try {
+        await supabase.functions.invoke('create-order-notification', {
+          body: {
+            user_id: order?.seller_id,
+            type: 'order',
+            title: 'Order Completed',
+            body: `Buyer confirmed receipt. Funds released to your wallet.`,
+            link_url: `/seller-dashboard`
+          }
+        });
+      } catch (notifError) {
+        console.error('Failed to send notification:', notifError);
+      }
 
       toast({
         title: 'Order Completed',
@@ -289,22 +301,29 @@ const OrderDetail = () => {
         })
         .eq('id', orderId);
 
-      // Notify admin
+      // Notify admin via edge function
       const { data: admins } = await supabase
         .from('user_roles')
         .select('user_id')
         .eq('role', 'admin');
 
       if (admins && admins.length > 0) {
-        const notifications = admins.map(admin => ({
-          user_id: admin.user_id,
-          type: 'order' as const,
-          title: 'Order Dispute',
-          body: `Order ${orderId?.slice(0, 8)} has been disputed by buyer`,
-          link_url: `/admin/orders`
-        }));
-
-        await supabase.from('notifications').insert(notifications);
+        // Send notification to each admin
+        for (const admin of admins) {
+          try {
+            await supabase.functions.invoke('create-order-notification', {
+              body: {
+                user_id: admin.user_id,
+                type: 'order',
+                title: 'Order Dispute',
+                body: `Order ${orderId?.slice(0, 8)} has been disputed by buyer`,
+                link_url: `/admin/orders`
+              }
+            });
+          } catch (notifError) {
+            console.error('Failed to send admin notification:', notifError);
+          }
+        }
       }
 
       toast({
