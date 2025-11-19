@@ -53,6 +53,7 @@ import SecurityInfo from "./pages/SecurityInfo";
 import ProductManagement from "./pages/ProductManagement";
 import Perks from "./pages/Perks";
 import ProfileViewer from "./pages/ProfileViewer";
+import OrderArrival from "./pages/OrderArrival";
 
 const queryClient = new QueryClient();
 
@@ -83,8 +84,9 @@ const App = () => (
               <Route path="/store/:storeId" element={<ProtectedRoute><StorePage /></ProtectedRoute>} />
               <Route path="/support" element={<ProtectedRoute><Support /></ProtectedRoute>} />
               <Route path="/contact" element={<ProtectedRoute><Contact /></ProtectedRoute>} />
-              <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
-              <Route path="/notification/:notificationId" element={<ProtectedRoute><NotificationDetail /></ProtectedRoute>} />
+          <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
+          <Route path="/notification/:notificationId" element={<ProtectedRoute><NotificationDetail /></ProtectedRoute>} />
+          <Route path="/order-arrival/:orderId" element={<ProtectedRoute><OrderArrival /></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
               <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
               <Route path="/store-settings" element={<ProtectedRoute><StoreSettings /></ProtectedRoute>} />

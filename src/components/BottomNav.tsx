@@ -14,6 +14,7 @@ const BottomNav = () => {
   const location = useLocation();
   const { user } = useAuth();
   const [hasUnreadMessages, setHasUnreadMessages] = useState(false);
+  const [shouldShowSellerBadge, setShouldShowSellerBadge] = useState(false);
   
   // Global unread messages indicator
   useEffect(() => {
@@ -48,11 +49,35 @@ const BottomNav = () => {
       supabase.removeChannel(channel);
     };
   }, [user]);
+
+  // Check if user should see seller promotion badge
+  useEffect(() => {
+    if (!user || isSeller) {
+      setShouldShowSellerBadge(false);
+      return;
+    }
+
+    const checkSellerStatus = async () => {
+      const { data: application } = await supabase
+        .from('seller_applications')
+        .select('status')
+        .eq('user_id', user.id)
+        .single();
+
+      const hasSeenPromo = localStorage.getItem(`seller_promo_seen_${user.id}`);
+      
+      // Show badge if: not a seller, no application, and hasn't seen promo
+      setShouldShowSellerBadge(!application && !hasSeenPromo);
+    };
+
+    checkSellerStatus();
+  }, [user, isSeller]);
   
   // Hide notification dot if user is on profile or seller dashboard pages
   const isOnProfilePages = location.pathname === '/profile' || 
                           location.pathname === '/seller-dashboard';
-  const showProfileDot = isSeller && hasPendingOrders && !isOnProfilePages;
+  const showSellerOrdersDot = isSeller && hasPendingOrders && !isOnProfilePages;
+  const showProfileDot = showSellerOrdersDot || shouldShowSellerBadge;
 
   const navItems = [
     { to: '/', icon: Home, label: 'Home' },

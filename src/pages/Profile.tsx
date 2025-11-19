@@ -12,6 +12,7 @@ import BottomNav from '@/components/BottomNav';
 import { useUserRoles } from '@/hooks/useUserRoles';
 import { useSellerNotifications } from '@/hooks/useSellerNotifications';
 import { toast } from 'sonner';
+import BecomeSellerModal from '@/components/BecomeSellerModal';
 
 const Profile = () => {
   const { user, signOut } = useAuth();
@@ -29,6 +30,8 @@ const Profile = () => {
   const [buyerOrdersCount, setBuyerOrdersCount] = useState(0);
   const [productsCount, setProductsCount] = useState(0);
   const [storeOrdersCount, setStoreOrdersCount] = useState(0);
+  const [showBecomeSellerModal, setShowBecomeSellerModal] = useState(false);
+  const [hasSeenSellerPromo, setHasSeenSellerPromo] = useState(false);
 
   useEffect(() => {
     if (user) {
@@ -41,6 +44,10 @@ const Profile = () => {
         loadProductsCount();
         loadStoreOrdersCount();
       }
+      
+      // Check if user has seen seller promo
+      const seen = localStorage.getItem(`seller_promo_seen_${user.id}`);
+      setHasSeenSellerPromo(!!seen);
     }
   }, [user, isSeller]);
 
