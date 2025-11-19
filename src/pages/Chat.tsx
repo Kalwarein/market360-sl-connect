@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { ArrowLeft, Send, Package, Info, AtSign, X } from 'lucide-react';
+import { ArrowLeft, Send, Package, AtSign, X, User } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import ProductSelectorModal from '@/components/ProductSelectorModal';
@@ -26,9 +26,11 @@ interface Conversation {
   seller_id: string;
   product_id?: string;
   products?: {
+    id: string;
     title: string;
     images: string[];
     price: number;
+    moq?: number;
   };
   other_user?: {
     name: string;
@@ -46,10 +48,13 @@ const Chat = () => {
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const messagesContainerRef = useRef<HTMLDivElement>(null);
+  const [currentUserName, setCurrentUserName] = useState('');
   const [currentUserAvatar, setCurrentUserAvatar] = useState<string | null>(null);
   const [showProductSelector, setShowProductSelector] = useState(false);
   const [attachedProduct, setAttachedProduct] = useState<any>(null);
+  const [isTyping, setIsTyping] = useState(false);
+  const [otherUserTyping, setOtherUserTyping] = useState(false);
+  const typingTimeoutRef = useRef<NodeJS.Timeout>();
 
   useEffect(() => {
     if (!user) {
@@ -60,16 +65,62 @@ const Chat = () => {
     if (conversationId && user) {
       loadConversation();
       loadMessages();
-      subscribeToMessages();
+      loadCurrentUserProfile();
       markMessagesAsRead();
-      loadCurrentUserAvatar();
       
-      // Check if there's an enquiry product from navigation state
       const enquiryProduct = (location.state as any)?.enquiryProduct;
       if (enquiryProduct) {
         setAttachedProduct(enquiryProduct);
       }
     }
+
+    return () => {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+    };
+  }, [conversationId, user]);
+
+  useEffect(() => {
+    if (!conversationId) return;
+
+    const messagesChannel = supabase
+      .channel(`messages-${conversationId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'messages',
+          filter: `conversation_id=eq.${conversationId}`,
+        },
+        (payload) => {
+          setMessages((prev) => [...prev, payload.new as Message]);
+          setTimeout(() => markMessagesAsRead(), 100);
+        }
+      )
+      .subscribe();
+
+    const presenceChannel = supabase.channel(`presence-${conversationId}`, {
+      config: { presence: { key: user?.id } },
+    });
+
+    presenceChannel
+      .on('presence', { event: 'sync' }, () => {
+        const state = presenceChannel.presenceState();
+        const otherUsers = Object.keys(state).filter(key => key !== user?.id);
+        const someoneTyping = otherUsers.some(userId => {
+          const userState = state[userId] as any;
+          return userState && userState[0]?.typing === true;
+        });
+        setOtherUserTyping(someoneTyping);
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(messagesChannel);
+      supabase.removeChannel(presenceChannel);
+    };
   }, [conversationId, user]);
 
   useEffect(() => {
@@ -80,17 +131,18 @@ const Chat = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const loadCurrentUserAvatar = async () => {
+  const loadCurrentUserProfile = async () => {
     try {
       const { data } = await supabase
         .from('profiles')
-        .select('avatar_url')
+        .select('name, avatar_url')
         .eq('id', user?.id)
         .maybeSingle();
       
+      setCurrentUserName(data?.name || 'You');
       setCurrentUserAvatar(data?.avatar_url || null);
     } catch (error) {
-      console.error('Error loading current user avatar:', error);
+      console.error('Error loading current user profile:', error);
     }
   };
 
@@ -104,7 +156,6 @@ const Chat = () => {
 
       if (error) throw error;
 
-      // Get other user's profile
       const isBuyer = data.buyer_id === user?.id;
       const otherUserId = isBuyer ? data.seller_id : data.buyer_id;
       
@@ -114,12 +165,11 @@ const Chat = () => {
         .eq('id', otherUserId)
         .maybeSingle();
 
-      // Get product if exists
       let product = null;
       if (data.product_id) {
         const { data: productData } = await supabase
           .from('products')
-          .select('title, images, price')
+          .select('id, title, images, price, moq')
           .eq('id', data.product_id)
           .maybeSingle();
         product = productData;
@@ -127,8 +177,8 @@ const Chat = () => {
 
       setConversation({
         ...data,
-        products: product,
-        other_user: profile || { name: 'Unknown', avatar_url: null }
+        other_user: profile || { name: 'Unknown User', avatar_url: null },
+        products: product
       });
     } catch (error) {
       console.error('Error loading conversation:', error);
@@ -138,6 +188,7 @@ const Chat = () => {
 
   const loadMessages = async () => {
     try {
+      setLoading(true);
       const { data, error } = await supabase
         .from('messages')
         .select('*')
@@ -148,34 +199,28 @@ const Chat = () => {
       setMessages(data || []);
     } catch (error) {
       console.error('Error loading messages:', error);
+      toast.error('Failed to load messages');
     } finally {
       setLoading(false);
     }
   };
 
-  const subscribeToMessages = () => {
-    const channel = supabase
-      .channel(`messages-${conversationId}`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-          filter: `conversation_id=eq.${conversationId}`,
-        },
-        (payload) => {
-          setMessages((prev) => [...prev, payload.new as Message]);
-          if (payload.new.sender_id !== user?.id) {
-            markMessagesAsRead();
-          }
-        }
-      )
-      .subscribe();
+  const handleTyping = () => {
+    if (!isTyping) {
+      setIsTyping(true);
+      const channel = supabase.channel(`presence-${conversationId}`);
+      channel.track({ user_id: user?.id, typing: true });
+    }
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+
+    typingTimeoutRef.current = setTimeout(() => {
+      setIsTyping(false);
+      const channel = supabase.channel(`presence-${conversationId}`);
+      channel.track({ user_id: user?.id, typing: false });
+    }, 2000);
   };
 
   const markMessagesAsRead = async () => {
@@ -191,414 +236,253 @@ const Chat = () => {
     }
   };
 
-  const sendMessage = async () => {
+  const handleSend = async () => {
     if (!newMessage.trim() && !attachedProduct) return;
 
     try {
-      // If there's an attached product, send it as a product card
+      const messageData: any = {
+        conversation_id: conversationId,
+        sender_id: user?.id,
+        body: newMessage.trim(),
+        message_type: attachedProduct ? 'product_card' : 'text',
+      };
+
       if (attachedProduct) {
-        const { error: productError } = await supabase.from('messages').insert({
-          conversation_id: conversationId,
-          sender_id: user?.id,
-          body: JSON.stringify(attachedProduct),
-          message_type: 'action',
-        });
-
-        if (productError) throw productError;
-        
-        // Clear attached product after sending
-        setAttachedProduct(null);
+        messageData.attachments = [JSON.stringify(attachedProduct)];
       }
 
-      // Send text message if there is one
-      if (newMessage.trim()) {
-        const { error } = await supabase.from('messages').insert({
-          conversation_id: conversationId,
-          sender_id: user?.id,
-          body: newMessage,
-          message_type: 'text',
-        });
+      const { error } = await supabase.from('messages').insert(messageData);
 
-        if (error) throw error;
-      }
+      if (error) throw error;
 
-      // Update last_message_at
       await supabase
         .from('conversations')
         .update({ last_message_at: new Date().toISOString() })
         .eq('id', conversationId);
 
       setNewMessage('');
+      setAttachedProduct(null);
+      setIsTyping(false);
+      const channel = supabase.channel(`presence-${conversationId}`);
+      channel.track({ user_id: user?.id, typing: false });
     } catch (error) {
       console.error('Error sending message:', error);
       toast.error('Failed to send message');
     }
   };
 
-  const handleProductSelect = (product: any) => {
-    const productCard = {
-      id: product.id,
-      title: product.title,
-      price: product.price,
-      image: product.images[0],
-      category: product.category,
-    };
-    
-    setAttachedProduct(productCard);
-    setShowProductSelector(false);
-  };
+  const renderMessage = (message: Message) => {
+    const isOwn = message.sender_id === user?.id;
+    const senderName = isOwn ? currentUserName : conversation?.other_user?.name || 'Unknown';
+    const senderAvatar = isOwn ? currentUserAvatar : conversation?.other_user?.avatar_url;
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setNewMessage(value);
-    
-    // Detect @ mention at the start or after a space
-    if (value.endsWith('@') || value.includes(' @')) {
-      setShowProductSelector(true);
+    if (message.message_type === 'product_card' && message.attachments?.[0]) {
+      try {
+        const product = JSON.parse(message.attachments[0]);
+        return (
+          <div className={`flex gap-3 ${isOwn ? 'flex-row-reverse' : ''} mb-4 animate-fade-in`}>
+            <Avatar className="h-10 w-10 border-2 border-primary/20">
+              <AvatarImage src={senderAvatar || undefined} />
+              <AvatarFallback className="bg-primary/10 text-primary">
+                {senderName?.charAt(0)?.toUpperCase() || <User className="h-5 w-5" />}
+              </AvatarFallback>
+            </Avatar>
+            <div className={`flex flex-col ${isOwn ? 'items-end' : 'items-start'} max-w-[75%]`}>
+              <span className="text-xs text-muted-foreground mb-1 font-medium">{senderName}</span>
+              <Card className="shadow-md hover:shadow-lg transition-all hover:scale-[1.02] cursor-pointer" onClick={() => navigate(`/product/${product.id}`)}>
+                <CardContent className="p-3">
+                  <div className="flex gap-3">
+                    <img
+                      src={product.images?.[0]}
+                      alt={product.title}
+                      className="w-20 h-20 object-cover rounded-lg"
+                    />
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-sm line-clamp-2">{product.title}</h4>
+                      <p className="text-primary font-bold mt-1">Le {product.price?.toLocaleString()}</p>
+                      {product.moq && (
+                        <p className="text-xs text-muted-foreground">MOQ: {product.moq}</p>
+                      )}
+                      <Button size="sm" className="mt-2 w-full rounded-full" variant="outline">
+                        Start Order Now
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              <span className="text-xs text-muted-foreground mt-1">
+                {format(new Date(message.created_at), 'HH:mm')}
+              </span>
+            </div>
+          </div>
+        );
+      } catch (e) {
+        console.error('Error parsing product:', e);
+      }
     }
-  };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
+    if (message.message_type === 'system') {
+      return (
+        <div className="flex justify-center my-4" key={message.id}>
+          <div className="bg-muted px-4 py-2 rounded-full text-xs text-muted-foreground shadow-sm">
+            {message.body}
+          </div>
+        </div>
+      );
     }
-  };
 
-  const formatMessageTime = (timestamp: string) => {
-    const date = new Date(timestamp);
-    return format(date, 'h:mm a');
-  };
-
-  const isSystemMessage = (message: Message) => {
-    return message.body.startsWith('🔔');
-  };
-
-  const isProductCard = (message: Message) => {
-    return message.message_type === 'action' || message.message_type === 'product_card';
-  };
-
-  const parseProductCard = (body: string) => {
-    try {
-      return JSON.parse(body);
-    } catch {
-      return null;
-    }
-  };
-
-  const handleAvatarClick = () => {
-    if (conversation?.other_user) {
-      const otherUserId = conversation.buyer_id === user?.id 
-        ? conversation.seller_id 
-        : conversation.buyer_id;
-      navigate(`/profile-viewer/${otherUserId}`);
-    }
+    return (
+      <div className={`flex gap-3 ${isOwn ? 'flex-row-reverse' : ''} mb-4 animate-fade-in`} key={message.id}>
+        <Avatar className="h-10 w-10 border-2 border-primary/20 cursor-pointer" onClick={() => {
+          const otherUserId = conversation?.buyer_id === user?.id ? conversation?.seller_id : conversation?.buyer_id;
+          if (!isOwn && otherUserId) navigate(`/profile/${otherUserId}`);
+        }}>
+          <AvatarImage src={senderAvatar || undefined} />
+          <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+            {senderName?.charAt(0)?.toUpperCase() || <User className="h-5 w-5" />}
+          </AvatarFallback>
+        </Avatar>
+        <div className={`flex flex-col ${isOwn ? 'items-end' : 'items-start'} max-w-[75%]`}>
+          <span className="text-xs text-muted-foreground mb-1 font-medium">{senderName}</span>
+          <div
+            className={`px-4 py-3 rounded-2xl shadow-sm transition-all ${
+              isOwn
+                ? 'bg-primary text-primary-foreground rounded-br-sm'
+                : 'bg-muted rounded-bl-sm'
+            }`}
+          >
+            <p className="text-sm whitespace-pre-wrap break-words">{message.body}</p>
+          </div>
+          <span className="text-xs text-muted-foreground mt-1">
+            {format(new Date(message.created_at), 'HH:mm')}
+          </span>
+        </div>
+      </div>
+    );
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="flex items-center justify-center h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-screen bg-background select-none">
+    <div className="flex flex-col h-screen bg-background">
       {/* Header */}
-      <div className="bg-white border-b sticky top-0 z-10">
-        <div className="p-4 flex items-center gap-3">
-          <button
-            onClick={() => navigate('/messages')}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-          >
+      <div className="sticky top-0 z-10 bg-card border-b shadow-sm">
+        <div className="flex items-center gap-3 p-4">
+          <Button variant="ghost" size="icon" onClick={() => navigate('/messages')} className="rounded-full hover:bg-muted">
             <ArrowLeft className="h-5 w-5" />
-          </button>
-          
+          </Button>
           <Avatar 
-            className="h-10 w-10 cursor-pointer"
-            onClick={handleAvatarClick}
+            className="h-12 w-12 border-2 border-primary/20 cursor-pointer hover:ring-2 hover:ring-primary transition-all" 
+            onClick={() => {
+              const otherUserId = conversation?.buyer_id === user?.id ? conversation.seller_id : conversation.buyer_id;
+              if (otherUserId) navigate(`/profile/${otherUserId}`);
+            }}
           >
             <AvatarImage src={conversation?.other_user?.avatar_url || undefined} />
-            <AvatarFallback className="bg-primary/10 text-primary font-semibold">
-              {conversation?.other_user?.name?.[0]?.toUpperCase() || 'U'}
+            <AvatarFallback className="bg-primary/10 text-primary text-lg font-semibold">
+              {conversation?.other_user?.name?.charAt(0)?.toUpperCase() || <User className="h-6 w-6" />}
             </AvatarFallback>
           </Avatar>
-
           <div className="flex-1">
-            <h3 
-              className="font-semibold text-sm cursor-pointer hover:underline"
-              onClick={handleAvatarClick}
-            >
-              {conversation?.other_user?.name || 'Unknown User'}
-            </h3>
-            {conversation?.products?.title && (
-              <p className="text-xs text-muted-foreground truncate">
-                {conversation.products.title}
-              </p>
+            <h3 className="font-semibold text-lg">{conversation?.other_user?.name || 'Unknown User'}</h3>
+            {otherUserTyping && (
+              <p className="text-sm text-muted-foreground animate-pulse">typing...</p>
             )}
           </div>
-
-          {conversation?.products && (
-            <button
-              onClick={() => navigate(`/product/${conversation.product_id}`)}
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-            >
-              <Info className="h-5 w-5" />
-            </button>
-          )}
         </div>
       </div>
 
-      {/* Product Card */}
+      {/* Product Context */}
       {conversation?.products && (
-        <div className="p-4 bg-muted/30">
-          <Card 
-            onClick={() => navigate(`/product/${conversation.product_id}`)}
-            className="cursor-pointer hover:shadow-md transition-shadow"
-          >
-            <CardContent className="p-3 flex gap-3">
-              <img
-                src={conversation.products.images[0]}
-                alt={conversation.products.title}
-                className="w-16 h-16 object-cover rounded-lg"
-              />
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-sm truncate">
-                  {conversation.products.title}
-                </p>
-                <p className="text-primary font-semibold text-sm">
-                  Le {conversation.products.price.toLocaleString()}
-                </p>
-              </div>
-              <Package className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-            </CardContent>
-          </Card>
+        <div className="bg-gradient-to-r from-primary/5 to-primary/10 border-b p-3">
+          <div className="flex items-center gap-3 max-w-2xl mx-auto">
+            <Package className="h-5 w-5 text-primary" />
+            <div className="flex-1">
+              <p className="text-sm font-medium line-clamp-1">{conversation.products.title}</p>
+              <p className="text-xs text-muted-foreground">Le {conversation.products.price?.toLocaleString()}</p>
+            </div>
+          </div>
         </div>
       )}
 
       {/* Messages */}
-      <div 
-        ref={messagesContainerRef}
-        className="flex-1 overflow-y-auto p-4 space-y-4"
-      >
-        {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-            <div className="text-center">
-              <p className="text-sm font-medium mb-1">No messages yet</p>
-              <p className="text-xs">Start the conversation!</p>
-            </div>
-          </div>
-        ) : (
-          messages.map((message) => {
-            const isOwn = message.sender_id === user?.id;
-            const isSystem = isSystemMessage(message);
-            const isProdCard = isProductCard(message);
-
-            if (isSystem) {
-              return (
-                <div key={message.id} className="flex justify-center">
-                  <div className="bg-muted px-4 py-2 rounded-full max-w-[80%]">
-                    <p className="text-xs text-center text-muted-foreground">
-                      {message.body}
-                    </p>
-                  </div>
-                </div>
-              );
-            }
-
-            if (isProdCard) {
-              const productData = parseProductCard(message.body);
-              if (!productData) return null;
-
-              return (
-                <div key={message.id} className={`flex ${isOwn ? 'justify-end' : 'justify-start'} mb-4`}>
-                  <Card 
-                    className="w-[280px] bg-white rounded-2xl shadow-md overflow-hidden border border-border/50 hover:shadow-lg transition-all duration-300"
-                  >
-                    <CardContent className="p-0">
-                      {/* Product Image */}
-                      <div 
-                        className="w-full aspect-square bg-muted/30 cursor-pointer"
-                        onClick={() => navigate(`/product/${productData.id}`)}
-                      >
-                        <img
-                          src={productData.image}
-                          alt={productData.title}
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                      
-                      {/* Product Details */}
-                      <div className="p-4 space-y-2">
-                        <p 
-                          className="font-medium text-sm leading-tight line-clamp-2 cursor-pointer hover:text-primary transition-colors"
-                          onClick={() => navigate(`/product/${productData.id}`)}
-                        >
-                          {productData.title}
-                        </p>
-                        
-                        <div className="space-y-1">
-                          <p className="text-2xl font-bold text-foreground">
-                            Le{productData.price?.toLocaleString()}
-                          </p>
-                          
-                          {productData.moq && (
-                            <p className="text-xs text-muted-foreground">
-                              Min. Order: {productData.moq} Pieces
-                            </p>
-                          )}
-                        </div>
-                        
-                        {/* Start Order Button */}
-                        <Button
-                          onClick={async (e) => {
-                            e.stopPropagation();
-                            
-                            // Add to cart first
-                            try {
-                              await supabase.from('cart_items').upsert({
-                                user_id: user?.id,
-                                product_id: productData.id,
-                                quantity: productData.moq || 1,
-                              });
-                              
-                              // Then navigate to checkout
-                              navigate('/checkout');
-                            } catch (error) {
-                              console.error('Error adding to cart:', error);
-                              toast.error('Failed to add product to cart');
-                            }
-                          }}
-                          className="w-full bg-[#FF6B00] hover:bg-[#FF6B00]/90 text-white font-semibold rounded-full h-11 text-base shadow-sm"
-                        >
-                          Start Order
-                        </Button>
-                      </div>
-                      
-                      {/* Read Indicator */}
-                      <div className="px-4 pb-3 flex justify-end">
-                        <span className="text-[10px] text-muted-foreground">
-                          {formatMessageTime(message.created_at)}
-                        </span>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </div>
-              );
-            }
-
-            return (
-              <div
-                key={message.id}
-                className={`flex gap-2 ${isOwn ? 'flex-row-reverse' : 'flex-row'}`}
-              >
-                {!isOwn && (
-                  <Avatar 
-                    className="h-8 w-8 flex-shrink-0 cursor-pointer"
-                    onClick={handleAvatarClick}
-                  >
-                    <AvatarImage src={conversation?.other_user?.avatar_url || undefined} />
-                    <AvatarFallback className="bg-primary/10 text-primary text-xs">
-                      {conversation?.other_user?.name?.[0]?.toUpperCase() || 'U'}
-                    </AvatarFallback>
-                  </Avatar>
-                )}
-
-                <div className={`flex flex-col ${isOwn ? 'items-end' : 'items-start'} max-w-[75%]`}>
-                  <div
-                    className={`px-4 py-2 rounded-2xl ${
-                      isOwn
-                        ? 'bg-primary text-white rounded-br-sm'
-                        : 'bg-muted text-foreground rounded-bl-sm'
-                    }`}
-                  >
-                    <p className="text-sm whitespace-pre-wrap break-words">
-                      {message.body}
-                    </p>
-                  </div>
-                  <span className="text-xs text-muted-foreground mt-1 px-2">
-                    {formatMessageTime(message.created_at)}
-                  </span>
-                </div>
-
-                {isOwn && (
-                  <Avatar className="h-8 w-8 flex-shrink-0">
-                    <AvatarImage src={currentUserAvatar || undefined} />
-                    <AvatarFallback className="bg-primary text-white text-xs">
-                      {user?.email?.[0]?.toUpperCase() || 'Y'}
-                    </AvatarFallback>
-                  </Avatar>
-                )}
-              </div>
-            );
-          })
-        )}
+      <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-background">
+        <div className="max-w-2xl mx-auto">
+          {messages.map((message) => renderMessage(message))}
+        </div>
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input */}
-      <div className="bg-white border-t">
-        {/* Attached Product Banner */}
-        {attachedProduct && (
-          <div className="p-3 bg-muted/30 border-b animate-fade-in">
-            <div className="flex items-center gap-3 p-3 bg-white rounded-xl shadow-sm border">
-              <img
-                src={attachedProduct.image}
-                alt={attachedProduct.title}
-                className="w-12 h-12 object-cover rounded-lg flex-shrink-0"
-              />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{attachedProduct.title}</p>
-                <p className="text-xs text-primary font-semibold">
-                  Le {attachedProduct.price.toLocaleString()}
-                </p>
-              </div>
-              <Button
-                onClick={() => setAttachedProduct(null)}
-                size="icon"
-                variant="ghost"
-                className="h-8 w-8 rounded-full flex-shrink-0 hover:bg-destructive/10"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        )}
-        
-        <div className="p-4">
-          <div className="flex gap-2 items-end">
-            <Button
-              onClick={() => setShowProductSelector(true)}
-              size="icon"
-              variant="ghost"
-              className="rounded-full h-10 w-10 flex-shrink-0 hover:bg-primary/10"
-            >
-              <AtSign className="h-5 w-5" />
-            </Button>
-            <Input
-              value={newMessage}
-              onChange={handleInputChange}
-              onKeyPress={handleKeyPress}
-              placeholder={attachedProduct ? "Add a message..." : "Type a message or @ to share products..."}
-              className="flex-1 rounded-full border-2 focus-visible:ring-primary"
+      {/* Product Attachment Preview */}
+      {attachedProduct && (
+        <div className="border-t bg-card p-3 shadow-lg">
+          <div className="flex items-center gap-3 bg-gradient-to-r from-primary/5 to-primary/10 p-3 rounded-xl max-w-2xl mx-auto shadow-sm">
+            <img
+              src={attachedProduct.images?.[0]}
+              alt={attachedProduct.title}
+              className="w-14 h-14 object-cover rounded-lg shadow-sm"
             />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold truncate">{attachedProduct.title}</p>
+              <p className="text-xs text-primary font-bold">Le {attachedProduct.price?.toLocaleString()}</p>
+            </div>
             <Button
-              onClick={sendMessage}
-              disabled={!newMessage.trim() && !attachedProduct}
+              variant="ghost"
               size="icon"
-              className="rounded-full h-10 w-10 flex-shrink-0 bg-primary hover:bg-primary/90 shadow-md"
+              onClick={() => setAttachedProduct(null)}
+              className="rounded-full hover:bg-destructive/10 hover:text-destructive"
             >
-              <Send className="h-4 w-4" />
+              <X className="h-4 w-4" />
             </Button>
           </div>
+        </div>
+      )}
+
+      {/* Input */}
+      <div className="border-t bg-card p-4 shadow-lg">
+        <div className="flex gap-2 max-w-2xl mx-auto">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setShowProductSelector(true)}
+            className="rounded-full hover:bg-primary/10 hover:text-primary hover:border-primary transition-all"
+          >
+            <AtSign className="h-5 w-5" />
+          </Button>
+          <Input
+            value={newMessage}
+            onChange={(e) => {
+              setNewMessage(e.target.value);
+              handleTyping();
+            }}
+            onKeyPress={(e) => e.key === 'Enter' && handleSend()}
+            placeholder="Type a message..."
+            className="flex-1 rounded-full border-2 focus:border-primary transition-all"
+          />
+          <Button 
+            onClick={handleSend} 
+            size="icon" 
+            className="rounded-full hover:scale-105 transition-transform"
+            disabled={!newMessage.trim() && !attachedProduct}
+          >
+            <Send className="h-5 w-5" />
+          </Button>
         </div>
       </div>
 
       <ProductSelectorModal
         open={showProductSelector}
         onClose={() => setShowProductSelector(false)}
-        onSelectProduct={handleProductSelect}
+        onSelectProduct={(product) => {
+          setAttachedProduct(product);
+          setShowProductSelector(false);
+        }}
       />
     </div>
   );
