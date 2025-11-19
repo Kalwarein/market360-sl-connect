@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Button } from '@/components/ui/button';
 import { MessageCircle, ArrowLeft } from 'lucide-react';
 import BottomNav from '@/components/BottomNav';
 import { Badge } from '@/components/ui/badge';
@@ -165,14 +166,16 @@ const MessagesPage = () => {
 
   return (
     <div className="min-h-screen bg-background pb-20">
-      <div className="bg-white border-b sticky top-0 z-10">
+      <div className="bg-card border-b sticky top-0 z-10 shadow-sm">
         <div className="p-4 flex items-center gap-3">
-          <button
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={() => navigate(-1)}
-            className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+            className="rounded-full hover:bg-muted"
           >
             <ArrowLeft className="h-5 w-5" />
-          </button>
+          </Button>
           <div>
             <h1 className="text-xl font-bold">Messages</h1>
             <p className="text-sm text-muted-foreground">
@@ -243,13 +246,13 @@ const MessagesPage = () => {
                 <Card
                   key={conversation.id}
                   onClick={handleConversationClick}
-                  className="cursor-pointer hover:shadow-md transition-shadow"
+                  className="cursor-pointer hover:shadow-lg transition-all hover:scale-[1.01] animate-fade-in"
                 >
                   <CardContent className="p-4">
                     <div className="flex gap-3">
-                      <Avatar className="h-12 w-12">
+                      <Avatar className="h-14 w-14 border-2 border-primary/20">
                         <AvatarImage src={conversation.other_user?.avatar_url || undefined} />
-                        <AvatarFallback className="bg-primary/10 text-primary font-semibold">
+                        <AvatarFallback className="bg-primary/10 text-primary font-bold text-lg">
                           {conversation.other_user?.name?.[0]?.toUpperCase() || 'U'}
                         </AvatarFallback>
                       </Avatar>
@@ -257,7 +260,7 @@ const MessagesPage = () => {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-start justify-between mb-1">
                           <div className="flex-1">
-                            <h3 className="font-semibold text-sm truncate">
+                            <h3 className="font-bold text-base truncate">
                               {conversation.other_user?.name || 'Unknown User'}
                             </h3>
                             <p className="text-xs text-muted-foreground">
@@ -266,11 +269,11 @@ const MessagesPage = () => {
                             </p>
                           </div>
                           <div className="flex flex-col items-end gap-1">
-                            <span className="text-xs text-muted-foreground whitespace-nowrap">
+                            <span className="text-xs text-muted-foreground whitespace-nowrap font-medium">
                               {formatTime(conversation.last_message_at)}
                             </span>
                              {conversation.unread_count > 0 && (
-                               <Badge className="h-5 min-w-[20px] flex items-center justify-center px-1.5 bg-destructive text-destructive-foreground">
+                               <Badge className="h-5 min-w-[20px] flex items-center justify-center px-1.5 bg-destructive text-destructive-foreground animate-pulse">
                                  {conversation.unread_count}
                                </Badge>
                              )}
@@ -278,7 +281,7 @@ const MessagesPage = () => {
                         </div>
                         
                         <p className="text-sm text-muted-foreground truncate">
-                          {conversation.last_message?.sender_id === user?.id && 'You: '}
+                          {conversation.last_message?.sender_id === user?.id && <span className="font-semibold">You: </span>}
                           {lastMessagePreview}
                         </p>
                       </div>
