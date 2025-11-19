@@ -104,6 +104,42 @@ const OrderDetail = () => {
     }
   };
 
+  const handleChatWithSeller = async () => {
+    if (!order) return;
+    try {
+      // Find or create conversation
+      let { data: existingConv } = await supabase
+        .from('conversations')
+        .select('id')
+        .eq('buyer_id', user?.id)
+        .eq('seller_id', order.seller_id)
+        .eq('product_id', order.products.id)
+        .maybeSingle();
+
+      let conversationId = existingConv?.id;
+
+      if (!conversationId) {
+        const { data: newConv, error } = await supabase
+          .from('conversations')
+          .insert({
+            buyer_id: user?.id,
+            seller_id: order.seller_id,
+            product_id: order.products.id
+          })
+          .select('id')
+          .single();
+
+        if (error) throw error;
+        conversationId = newConv.id;
+      }
+
+      navigate(`/chat/${conversationId}`);
+    } catch (error) {
+      console.error('Error opening chat:', error);
+      toast({ title: 'Error', description: 'Failed to open chat', variant: 'destructive' });
+    }
+  };
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'pending':
@@ -219,7 +255,7 @@ const OrderDetail = () => {
                 <Button 
                   variant="link" 
                   className="h-auto p-0 text-primary"
-                  onClick={() => navigate(`/chat?sellerId=${order.seller_id}&productId=${order.products.id}`)}
+                  onClick={handleChatWithSeller}
                 >
                   <MessageSquare className="h-3 w-3 mr-1" />
                   Chat with Seller
@@ -333,7 +369,7 @@ const OrderDetail = () => {
             </Button>
           )}
           <Button 
-            onClick={() => navigate(`/chat?sellerId=${order.seller_id}&productId=${order.products.id}`)}
+            onClick={handleChatWithSeller}
             variant="outline" 
             className="w-full" 
             size="lg"

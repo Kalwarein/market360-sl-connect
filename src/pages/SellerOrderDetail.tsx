@@ -255,6 +255,42 @@ const SellerOrderDetail = () => {
     }
   };
 
+  const handleChatWithBuyer = async () => {
+    if (!order) return;
+    try {
+      // Find or create conversation
+      let { data: existingConv } = await supabase
+        .from('conversations')
+        .select('id')
+        .eq('buyer_id', order.buyer_id)
+        .eq('seller_id', user?.id)
+        .eq('product_id', order.products.id)
+        .maybeSingle();
+
+      let conversationId = existingConv?.id;
+
+      if (!conversationId) {
+        const { data: newConv, error } = await supabase
+          .from('conversations')
+          .insert({
+            buyer_id: order.buyer_id,
+            seller_id: user?.id,
+            product_id: order.products.id
+          })
+          .select('id')
+          .single();
+
+        if (error) throw error;
+        conversationId = newConv.id;
+      }
+
+      navigate(`/chat/${conversationId}`);
+    } catch (error) {
+      console.error('Error opening chat:', error);
+      toast({ title: 'Error', description: 'Failed to open chat', variant: 'destructive' });
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'pending':
@@ -498,7 +534,7 @@ const SellerOrderDetail = () => {
 
             <Button
               variant="outline"
-              onClick={() => navigate(`/chat/${order.buyer_id}`)}
+              onClick={handleChatWithBuyer}
               className="w-full"
             >
               <MessageSquare className="h-4 w-4 mr-2" />
@@ -513,7 +549,7 @@ const SellerOrderDetail = () => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuItem onClick={() => navigate(`/chat/${order.buyer_id}`)}>
+                <DropdownMenuItem onClick={handleChatWithBuyer}>
                   <Eye className="h-4 w-4 mr-2" />
                   View Chat History
                 </DropdownMenuItem>
