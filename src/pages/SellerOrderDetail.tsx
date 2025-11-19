@@ -14,6 +14,16 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   ArrowLeft,
   Package,
   MapPin,
@@ -26,7 +36,8 @@ import {
   Truck,
   MoreVertical,
   FileText,
-  Eye
+  Eye,
+  AlertTriangle
 } from 'lucide-react';
 import BottomNav from '@/components/BottomNav';
 
@@ -67,6 +78,7 @@ const SellerOrderDetail = () => {
   const { toast } = useToast();
   const [order, setOrder] = useState<SellerOrderDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showDeliveryWarning, setShowDeliveryWarning] = useState(false);
 
   useEffect(() => {
     if (orderId && user) {
@@ -118,6 +130,19 @@ const SellerOrderDetail = () => {
     }
   };
 
+  const handleStatusChange = async (newStatus: 'processing' | 'packed' | 'shipped' | 'delivered') => {
+    if (newStatus === 'delivered') {
+      setShowDeliveryWarning(true);
+      return;
+    }
+    await updateOrderStatus(newStatus);
+  };
+
+  const confirmDelivered = async () => {
+    setShowDeliveryWarning(false);
+    await updateOrderStatus('delivered');
+  };
+
   const updateOrderStatus = async (newStatus: 'processing' | 'packed' | 'shipped' | 'delivered') => {
     try {
       await supabase
@@ -132,6 +157,25 @@ const SellerOrderDetail = () => {
         shipped: 'Your order is on the way to you',
         delivered: 'Your order has been delivered'
       };
+
+      // For delivered status, create rich notification with product details
+      if (newStatus === 'delivered') {
+        await supabase.from('notifications').insert({
+          user_id: order?.buyer_id,
+          type: 'order',
+          title: '📦 Order Delivered!',
+          body: `Your order for "${order?.products.title}" has been delivered. Please confirm receipt to complete the transaction.`,
+          link_url: `/order-arrival/${orderId}`,
+          image_url: order?.products.images[0],
+          metadata: { 
+            order_id: orderId, 
+            status: newStatus,
+            product_title: order?.products.title,
+            amount: order?.total_amount,
+            delivered_at: new Date().toISOString()
+          }
+        });
+      }
 
       // Send system message to chat
       const { data: conversation } = await supabase
@@ -150,15 +194,6 @@ const SellerOrderDetail = () => {
           message_type: 'text'
         });
       }
-
-      // Notify buyer
-      await supabase.from('notifications').insert({
-        user_id: order?.buyer_id,
-        type: 'order',
-        title: 'Order Update',
-        body: statusMessages[newStatus],
-        link_url: `/order-detail/${orderId}`
-      });
 
       toast({
         title: 'Success',
@@ -497,7 +532,7 @@ const SellerOrderDetail = () => {
 
             {order.status === 'shipped' && (
               <Button
-                onClick={() => updateOrderStatus('delivered')}
+                onClick={() => handleStatusChange('delivered')}
                 className="w-full"
               >
                 <CheckCircle2 className="h-4 w-4 mr-2" />
@@ -616,6 +651,41 @@ const SellerOrderDetail = () => {
       </div>
 
       <BottomNav />
+
+      {/* Delivery Warning Dialog */}
+      <AlertDialog open={showDeliveryWarning} onOpenChange={setShowDeliveryWarning}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2 rounded-full bg-amber-100 dark:bg-amber-950">
+                <AlertTriangle className="h-6 w-6 text-amber-600" />
+              </div>
+              <AlertDialogTitle>Important Reminder</AlertDialogTitle>
+            </div>
+            <AlertDialogDescription className="space-y-3 text-base">
+              <p>You're about to mark this order as <strong>Delivered</strong>.</p>
+              <div className="bg-amber-50 dark:bg-amber-950/20 p-4 rounded-lg space-y-2 text-sm">
+                <p className="font-semibold text-amber-900 dark:text-amber-400">Payment Release:</p>
+                <ul className="space-y-1 list-disc list-inside text-amber-800 dark:text-amber-500">
+                  <li>The buyer must confirm they received the order</li>
+                  <li>Payment will only be released after buyer confirmation</li>
+                  <li>Funds will appear in your wallet once confirmed</li>
+                </ul>
+              </div>
+              <p className="text-sm">Make sure the product has been successfully delivered to the buyer before proceeding.</p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDelivered}
+              className="bg-primary hover:bg-primary/90"
+            >
+              Yes, Mark as Delivered
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
