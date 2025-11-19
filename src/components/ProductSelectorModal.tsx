@@ -120,7 +120,7 @@ const ProductSelectorModal = ({ open, onClose, onSelectProduct }: ProductSelecto
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="fixed inset-0 max-w-full w-full h-full rounded-none p-0 border-0 bg-background z-[100] flex flex-col">
+      <DialogContent className="fixed inset-0 max-w-full w-full h-full rounded-none p-0 border-0 bg-background z-[100] flex flex-col m-0 data-[state=open]:animate-in data-[state=closed]:animate-out">
         {/* Header with close button */}
         <div className="sticky top-0 z-10 bg-card border-b border-border px-6 py-5 flex items-center justify-between shadow-sm shrink-0">
           <h2 className="text-2xl font-bold text-primary">Select a Product</h2>
