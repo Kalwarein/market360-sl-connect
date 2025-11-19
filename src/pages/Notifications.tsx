@@ -105,7 +105,12 @@ const Notifications = () => {
     if (!notification.read_at) {
       await markAsRead(notification.id);
     }
-    navigate(`/notification/${notification.id}`);
+    // If notification has a link_url (like order arrival), navigate there directly
+    if (notification.link_url) {
+      navigate(notification.link_url);
+    } else {
+      navigate(`/notification/${notification.id}`);
+    }
   };
 
   const unreadCount = notifications.filter(n => !n.read_at).length;
