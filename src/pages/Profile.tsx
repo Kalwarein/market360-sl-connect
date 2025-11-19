@@ -226,6 +226,18 @@ const Profile = () => {
     }
   };
 
+  const handleBecomeSellerClick = () => {
+    if (!hasSeenSellerPromo && !isSeller && !sellerApplicationStatus) {
+      setShowBecomeSellerModal(true);
+      localStorage.setItem(`seller_promo_seen_${user?.id}`, 'true');
+      setHasSeenSellerPromo(true);
+    } else {
+      navigate('/become-seller');
+    }
+  };
+
+  const shouldShowSellerBadge = !isSeller && !sellerApplicationStatus && !hasSeenSellerPromo;
+
   if (loading || rolesLoading) {
     return (
       <div className="min-h-screen bg-white pb-20">
@@ -633,14 +645,23 @@ const Profile = () => {
               </CardContent>
             </Card>
           ) : (
-            <Card onClick={() => navigate('/become-seller')} className="cursor-pointer hover:shadow-md transition-shadow">
+            <Card onClick={handleBecomeSellerClick} className="cursor-pointer hover:shadow-md transition-shadow relative">
               <CardContent className="p-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
+                  <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center relative">
                     <Store className="h-5 w-5 text-indigo-600" />
+                    {shouldShowSellerBadge && (
+                      <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                      </span>
+                    )}
                   </div>
                   <span className="font-medium text-gray-900">Become a Seller</span>
                 </div>
+                {shouldShowSellerBadge && (
+                  <Badge className="bg-red-500 text-white text-xs">New</Badge>
+                )}
               </CardContent>
             </Card>
           )}
@@ -686,6 +707,12 @@ const Profile = () => {
         </div>
 
         <BottomNav />
+
+        {/* Become Seller Onboarding Modal */}
+        <BecomeSellerModal 
+          open={showBecomeSellerModal} 
+          onClose={() => setShowBecomeSellerModal(false)} 
+        />
       </div>
     </>
   );
