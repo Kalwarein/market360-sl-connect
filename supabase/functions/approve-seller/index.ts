@@ -132,8 +132,8 @@ Deno.serve(async (req) => {
 
     console.log('Application approved')
 
-    // Create notification
-    await supabaseClient
+    // Create in-app notification
+    const { error: notificationError } = await supabaseClient
       .from('notifications')
       .insert({
         user_id: application.user_id,
@@ -143,7 +143,11 @@ Deno.serve(async (req) => {
         link_url: '/seller/dashboard'
       })
 
-    console.log('Notification created')
+    if (notificationError) {
+      console.error('Notification error:', notificationError)
+    } else {
+      console.log('In-app notification created')
+    }
 
     // Send approval email
     try {

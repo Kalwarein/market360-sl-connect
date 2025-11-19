@@ -518,6 +518,7 @@ export type Database = {
           store_country: string | null
           store_description: string | null
           store_logo_url: string | null
+          store_name: string | null
           store_region: string | null
           tax_id: string | null
           updated_at: string
@@ -551,6 +552,7 @@ export type Database = {
           store_country?: string | null
           store_description?: string | null
           store_logo_url?: string | null
+          store_name?: string | null
           store_region?: string | null
           tax_id?: string | null
           updated_at?: string
@@ -584,6 +586,7 @@ export type Database = {
           store_country?: string | null
           store_description?: string | null
           store_logo_url?: string | null
+          store_name?: string | null
           store_region?: string | null
           tax_id?: string | null
           updated_at?: string
