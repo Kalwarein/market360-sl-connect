@@ -13,6 +13,7 @@ import { useUserRoles } from '@/hooks/useUserRoles';
 import { useSellerNotifications } from '@/hooks/useSellerNotifications';
 import { toast } from 'sonner';
 import BecomeSellerModal from '@/components/BecomeSellerModal';
+import ImageCropModal from '@/components/ImageCropModal';
 
 const Profile = () => {
   const { user, signOut } = useAuth();
@@ -32,6 +33,8 @@ const Profile = () => {
   const [storeOrdersCount, setStoreOrdersCount] = useState(0);
   const [showBecomeSellerModal, setShowBecomeSellerModal] = useState(false);
   const [hasSeenSellerPromo, setHasSeenSellerPromo] = useState(false);
+  const [showCropModal, setShowCropModal] = useState(false);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -182,6 +185,19 @@ const Profile = () => {
         return;
       }
 
+      // Create object URL for cropping
+      const imageUrl = URL.createObjectURL(file);
+      setSelectedImage(imageUrl);
+      setShowCropModal(true);
+    } catch (error) {
+      console.error('Error selecting avatar:', error);
+      toast.error('Failed to select image');
+    }
+  };
+
+  const handleCropComplete = async (croppedBlob: Blob) => {
+    try {
+      setShowCropModal(false);
       setUploading(true);
       
       // Delete old avatar if exists
@@ -192,14 +208,13 @@ const Profile = () => {
           .remove([`${user?.id}/${oldPath}`]);
       }
 
-      // Upload new avatar
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Date.now()}.${fileExt}`;
+      // Upload cropped avatar
+      const fileName = `${Date.now()}.jpg`;
       const filePath = `${user?.id}/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from('profile-pictures')
-        .upload(filePath, file);
+        .upload(filePath, croppedBlob);
 
       if (uploadError) throw uploadError;
 
@@ -218,6 +233,12 @@ const Profile = () => {
 
       setProfile({ ...profile, avatar_url: publicUrl });
       toast.success('Profile picture updated successfully');
+      
+      // Clean up
+      if (selectedImage) {
+        URL.revokeObjectURL(selectedImage);
+        setSelectedImage(null);
+      }
     } catch (error) {
       console.error('Error uploading avatar:', error);
       toast.error('Failed to upload profile picture');
@@ -713,6 +734,22 @@ const Profile = () => {
           open={showBecomeSellerModal} 
           onClose={() => setShowBecomeSellerModal(false)} 
         />
+
+        {/* Image Crop Modal */}
+        {selectedImage && (
+          <ImageCropModal
+            open={showCropModal}
+            imageUrl={selectedImage}
+            onClose={() => {
+              setShowCropModal(false);
+              if (selectedImage) {
+                URL.revokeObjectURL(selectedImage);
+                setSelectedImage(null);
+              }
+            }}
+            onCropComplete={handleCropComplete}
+          />
+        )}
       </div>
     </>
   );
