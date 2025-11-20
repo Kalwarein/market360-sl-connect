@@ -51,6 +51,27 @@ export const BanUserModal = ({
 
       if (error) throw error;
 
+      // Get user email
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('email, name')
+        .eq('id', userId)
+        .single();
+
+      // Send email notification
+      if (profile?.email) {
+        await supabase.functions.invoke('send-email', {
+          body: {
+            type: 'user_banned',
+            to: profile.email,
+            data: {
+              userName: profile.name || userName,
+              reason: reason.trim()
+            }
+          }
+        });
+      }
+
       // Create audit log
       await supabase.from('audit_logs').insert({
         action: 'user_banned',

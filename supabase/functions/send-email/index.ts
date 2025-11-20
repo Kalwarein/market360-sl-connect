@@ -8,7 +8,7 @@ const corsHeaders = {
 };
 
 interface EmailRequest {
-  type: 'order_confirmation' | 'new_order_seller' | 'order_status_update' | 'wallet_transaction' | 'new_message' | 'seller_approved';
+  type: 'order_confirmation' | 'new_order_seller' | 'order_status_update' | 'wallet_transaction' | 'new_message' | 'seller_approved' | 'user_suspended' | 'user_banned' | 'appeal_approved' | 'appeal_rejected';
   to: string;
   data: any;
 }
@@ -358,6 +358,211 @@ const generateNewMessageEmail = (data: any) => {
   `;
 };
 
+const generateUserSuspendedEmail = (data: any) => {
+  const { userName, reason, expiresAt } = data;
+  
+  return `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f7f9fb; margin: 0; padding: 0; }
+          .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; }
+          .header { background: #FF9900; padding: 40px 20px; text-align: center; }
+          .header h1 { color: #ffffff; margin: 0; font-size: 28px; }
+          .content { padding: 40px 30px; }
+          .warning-box { background: #FFF3CD; border-left: 4px solid #FF9900; padding: 20px; margin: 20px 0; border-radius: 8px; }
+          .warning-box h3 { margin: 0 0 12px 0; color: #856404; }
+          .warning-box p { margin: 6px 0; color: #856404; }
+          .footer { background: #0B2B22; color: #ffffff; padding: 30px; text-align: center; }
+          .footer p { margin: 5px 0; font-size: 14px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>⏸️ Account Suspended</h1>
+          </div>
+          <div class="content">
+            <p>Hello ${userName},</p>
+            <p>Your Market360 account has been temporarily suspended.</p>
+            
+            <div class="warning-box">
+              <h3>Suspension Details</h3>
+              <p><strong>Reason:</strong> ${reason}</p>
+              <p><strong>Account will be restored on:</strong> ${expiresAt}</p>
+            </div>
+
+            <p style="margin-top: 30px; color: #6B7280; font-size: 14px;">
+              You will be able to access your account once the suspension period expires. If you believe this suspension was made in error, you can submit an appeal when you log in.
+            </p>
+          </div>
+          <div class="footer">
+            <p><strong>Market360 Moderation Team</strong></p>
+            <p>Sierra Leone's Trusted Marketplace</p>
+            <p style="font-size: 12px; margin-top: 15px;">© 2025 Market360. All rights reserved.</p>
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+};
+
+const generateUserBannedEmail = (data: any) => {
+  const { userName, reason } = data;
+  
+  return `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f7f9fb; margin: 0; padding: 0; }
+          .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; }
+          .header { background: linear-gradient(135deg, #DC2626 0%, #991B1B 100%); padding: 40px 20px; text-align: center; }
+          .header h1 { color: #ffffff; margin: 0; font-size: 28px; }
+          .content { padding: 40px 30px; }
+          .danger-box { background: #FEE2E2; border-left: 4px solid #DC2626; padding: 20px; margin: 20px 0; border-radius: 8px; }
+          .danger-box h3 { margin: 0 0 12px 0; color: #991B1B; }
+          .danger-box p { margin: 6px 0; color: #991B1B; }
+          .footer { background: #0B2B22; color: #ffffff; padding: 30px; text-align: center; }
+          .footer p { margin: 5px 0; font-size: 14px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>🚫 Account Banned</h1>
+          </div>
+          <div class="content">
+            <p>Hello ${userName},</p>
+            <p>Your Market360 account has been permanently banned.</p>
+            
+            <div class="danger-box">
+              <h3>Ban Details</h3>
+              <p><strong>Reason:</strong> ${reason}</p>
+            </div>
+
+            <p style="margin-top: 30px; color: #6B7280; font-size: 14px;">
+              This is a permanent action. If you believe this ban was made in error, you can submit an appeal for account restoration when you log in.
+            </p>
+          </div>
+          <div class="footer">
+            <p><strong>Market360 Moderation Team</strong></p>
+            <p>Sierra Leone's Trusted Marketplace</p>
+            <p style="font-size: 12px; margin-top: 15px;">© 2025 Market360. All rights reserved.</p>
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+};
+
+const generateAppealApprovedEmail = (data: any) => {
+  const { userName, adminResponse } = data;
+  
+  return `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f7f9fb; margin: 0; padding: 0; }
+          .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; }
+          .header { background: linear-gradient(135deg, #0FA86C 0%, #0B8A6D 100%); padding: 40px 20px; text-align: center; }
+          .header h1 { color: #ffffff; margin: 0; font-size: 28px; }
+          .content { padding: 40px 30px; }
+          .success-box { background: #D1FAE5; border-left: 4px solid #0FA86C; padding: 20px; margin: 20px 0; border-radius: 8px; }
+          .success-box h3 { margin: 0 0 12px 0; color: #065F46; }
+          .success-box p { margin: 6px 0; color: #065F46; line-height: 1.6; }
+          .footer { background: #0B2B22; color: #ffffff; padding: 30px; text-align: center; }
+          .footer p { margin: 5px 0; font-size: 14px; }
+          .button { display: inline-block; background: #0FA86C; color: #ffffff; padding: 14px 32px; text-decoration: none; border-radius: 8px; font-weight: bold; margin: 20px 0; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>✅ Appeal Approved!</h1>
+          </div>
+          <div class="content">
+            <p>Hello ${userName},</p>
+            <p>Great news! Your appeal has been approved and your account restriction has been lifted.</p>
+            
+            <div class="success-box">
+              <h3>Admin Response</h3>
+              <p>${adminResponse}</p>
+            </div>
+
+            <a href="https://market360-sl-connect.lovable.app/" class="button">Access Your Account</a>
+
+            <p style="margin-top: 30px; color: #6B7280; font-size: 14px;">
+              You can now access your Market360 account without any restrictions. Welcome back!
+            </p>
+          </div>
+          <div class="footer">
+            <p><strong>Market360 Moderation Team</strong></p>
+            <p>Sierra Leone's Trusted Marketplace</p>
+            <p style="font-size: 12px; margin-top: 15px;">© 2025 Market360. All rights reserved.</p>
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+};
+
+const generateAppealRejectedEmail = (data: any) => {
+  const { userName, adminResponse } = data;
+  
+  return `
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f7f9fb; margin: 0; padding: 0; }
+          .container { max-width: 600px; margin: 0 auto; background-color: #ffffff; }
+          .header { background: linear-gradient(135deg, #6B7280 0%, #4B5563 100%); padding: 40px 20px; text-align: center; }
+          .header h1 { color: #ffffff; margin: 0; font-size: 28px; }
+          .content { padding: 40px 30px; }
+          .info-box { background: #F3F4F6; border-left: 4px solid #6B7280; padding: 20px; margin: 20px 0; border-radius: 8px; }
+          .info-box h3 { margin: 0 0 12px 0; color: #374151; }
+          .info-box p { margin: 6px 0; color: #374151; line-height: 1.6; }
+          .footer { background: #0B2B22; color: #ffffff; padding: 30px; text-align: center; }
+          .footer p { margin: 5px 0; font-size: 14px; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>Appeal Response</h1>
+          </div>
+          <div class="content">
+            <p>Hello ${userName},</p>
+            <p>Your appeal has been reviewed. After careful consideration, your appeal has been rejected.</p>
+            
+            <div class="info-box">
+              <h3>Admin Response</h3>
+              <p>${adminResponse}</p>
+            </div>
+
+            <p style="margin-top: 30px; color: #6B7280; font-size: 14px;">
+              If you have any questions about this decision, please contact our support team.
+            </p>
+          </div>
+          <div class="footer">
+            <p><strong>Market360 Moderation Team</strong></p>
+            <p>Sierra Leone's Trusted Marketplace</p>
+            <p style="font-size: 12px; margin-top: 15px;">© 2025 Market360. All rights reserved.</p>
+          </div>
+        </div>
+      </body>
+    </html>
+  `;
+};
+
+
 const handler = async (req: Request): Promise<Response> => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -426,6 +631,22 @@ const handler = async (req: Request): Promise<Response> => {
       case 'new_message':
         html = generateNewMessageEmail(data);
         subject = `New message from ${data.senderName} - Market360`;
+        break;
+      case 'user_suspended':
+        html = generateUserSuspendedEmail(data);
+        subject = '⏸️ Your Market360 Account Has Been Suspended';
+        break;
+      case 'user_banned':
+        html = generateUserBannedEmail(data);
+        subject = '🚫 Your Market360 Account Has Been Banned';
+        break;
+      case 'appeal_approved':
+        html = generateAppealApprovedEmail(data);
+        subject = '✅ Your Appeal Has Been Approved - Market360';
+        break;
+      case 'appeal_rejected':
+        html = generateAppealRejectedEmail(data);
+        subject = 'Appeal Response - Market360';
         break;
       default:
         throw new Error(`Unknown email type: ${type}`);
