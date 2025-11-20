@@ -44,6 +44,7 @@ const Settings = () => {
     name: '',
     email: '',
     phone: '',
+    phone_verified: false,
   });
 
   const [notifications, setNotifications] = useState({
@@ -74,10 +75,14 @@ const Settings = () => {
       if (error) throw error;
 
       if (data) {
+        // Format phone number for display (remove +232 prefix)
+        const displayPhone = data.phone ? data.phone.replace('+232', '') : '';
+        
         setProfile({
           name: data.name || '',
           email: data.email || '',
-          phone: data.phone || '',
+          phone: displayPhone,
+          phone_verified: data.phone_verified || false,
         });
         
         const notifPrefs = data.notification_preferences as any;
@@ -115,11 +120,22 @@ const Settings = () => {
   const handleSave = async () => {
     try {
       setSaving(true);
+      
+      // If phone is being updated and not verified, prevent save
+      if (profile.phone && !profile.phone_verified) {
+        toast({
+          title: 'Phone Not Verified',
+          description: 'Please verify your phone number before saving',
+          variant: 'destructive',
+        });
+        setSaving(false);
+        return;
+      }
+
       const { error } = await supabase
         .from('profiles')
         .update({
           name: profile.name,
-          phone: profile.phone,
           notification_preferences: notifications,
           language: language,
           updated_at: new Date().toISOString(),
@@ -268,15 +284,47 @@ const Settings = () => {
               />
               <p className="text-xs text-muted-foreground mt-1">Email cannot be changed</p>
             </div>
-            <div>
-              <Label>Phone</Label>
-              <Input
-                placeholder="+1234567890"
-                type="tel"
-                className="mt-2"
-                value={profile.phone}
-                onChange={(e) => setProfile({ ...profile, phone: e.target.value })}
-              />
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label>Phone Number</Label>
+                {profile.phone_verified && (
+                  <span className="text-xs bg-green-500/10 text-green-600 px-2 py-1 rounded-full border border-green-500/20">
+                    ✓ Verified
+                  </span>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <div className="flex items-center px-3 py-2 border border-border rounded-lg bg-muted/30">
+                  <span className="text-sm font-medium">+232</span>
+                </div>
+                <Input
+                  placeholder="76123456"
+                  type="tel"
+                  className="flex-1"
+                  value={profile.phone}
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/[^0-9]/g, '');
+                    setProfile({ ...profile, phone: value });
+                  }}
+                  maxLength={9}
+                  disabled={profile.phone_verified}
+                />
+              </div>
+              {!profile.phone_verified && profile.phone && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate('/verify-phone')}
+                  className="w-full mt-2"
+                >
+                  Verify Phone Number
+                </Button>
+              )}
+              <p className="text-xs text-muted-foreground">
+                {profile.phone_verified 
+                  ? 'Your phone number is verified and cannot be changed'
+                  : 'Enter your number without the leading zero (e.g., 76123456)'}
+              </p>
             </div>
           </CardContent>
         </Card>
