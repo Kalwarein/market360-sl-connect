@@ -119,6 +119,20 @@ const AdminAppealDetail = () => {
         .update({ is_active: false })
         .eq('id', appeal!.user_moderation?.id);
 
+      // Send email notification
+      if (appeal?.profiles?.email) {
+        await supabase.functions.invoke('send-email', {
+          body: {
+            type: 'appeal_approved',
+            to: appeal.profiles.email,
+            data: {
+              userName: appeal.profiles.name || 'User',
+              adminResponse: adminResponse.trim()
+            }
+          }
+        });
+      }
+
       toast.success('Appeal approved and user restriction lifted');
       navigate('/admin/appeals');
     } catch (error) {
@@ -146,6 +160,20 @@ const AdminAppealDetail = () => {
           reviewed_at: new Date().toISOString(),
         })
         .eq('id', appealId);
+
+      // Send email notification
+      if (appeal?.profiles?.email) {
+        await supabase.functions.invoke('send-email', {
+          body: {
+            type: 'appeal_rejected',
+            to: appeal.profiles.email,
+            data: {
+              userName: appeal.profiles.name || 'User',
+              adminResponse: adminResponse.trim()
+            }
+          }
+        });
+      }
 
       toast.success('Appeal rejected');
       navigate('/admin/appeals');
