@@ -153,17 +153,17 @@ const Search = () => {
   return (
     <div className="min-h-screen bg-background pb-20">
       {/* Header - Fixed */}
-      <div className="fixed top-0 left-0 right-0 z-50 bg-primary p-4 shadow-lg">
+      <div className="fixed top-0 left-0 right-0 z-50 bg-primary dark:bg-card p-4 shadow-lg border-b border-border/20">
         <div className="flex items-center gap-3 mb-4">
           <Button
             variant="ghost"
             size="icon"
             onClick={() => navigate(-1)}
-            className="text-primary-foreground hover:bg-primary-foreground/20 rounded-full"
+            className="text-primary-foreground dark:text-foreground hover:bg-primary-foreground/20 dark:hover:bg-muted rounded-full"
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <h1 className="text-xl font-bold text-primary-foreground">Search Products</h1>
+          <h1 className="text-xl font-bold text-primary-foreground dark:text-foreground">Search Products</h1>
         </div>
 
         <PremiumSearchBar
@@ -192,15 +192,15 @@ const Search = () => {
             {recentSearches.length > 0 && (
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-semibold flex items-center gap-2 text-foreground">
-                    <Clock className="h-5 w-5 text-primary" />
+                  <h2 className="text-lg font-semibold flex items-center gap-2 text-foreground dark:text-foreground">
+                    <Clock className="h-5 w-5 text-primary dark:text-primary" />
                     Recent Searches
                   </h2>
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={clearRecentSearches}
-                    className="text-muted-foreground hover:text-foreground"
+                    className="text-muted-foreground dark:text-muted-foreground hover:text-foreground dark:hover:text-foreground"
                   >
                     Clear
                   </Button>
@@ -223,11 +223,11 @@ const Search = () => {
 
             {/* Trending Products */}
             <div className="space-y-3">
-              <h2 className="text-lg font-semibold flex items-center gap-2 text-foreground">
-                <TrendingUp className="h-5 w-5 text-primary" />
+              <h2 className="text-lg font-semibold flex items-center gap-2 text-foreground dark:text-foreground">
+                <TrendingUp className="h-5 w-5 text-primary dark:text-primary" />
                 Trending Now
               </h2>
-              <p className="text-sm text-muted-foreground">
+              <p className="text-sm text-muted-foreground dark:text-muted-foreground">
                 Most viewed products this week
               </p>
               
@@ -257,8 +257,8 @@ const Search = () => {
             ) : searchResults.length === 0 ? (
               <div className="text-center py-12 space-y-3">
                 <div className="text-5xl">🔍</div>
-                <h3 className="text-xl font-semibold text-foreground">No results found</h3>
-                <p className="text-muted-foreground">
+                <h3 className="text-xl font-semibold text-foreground dark:text-foreground">No results found</h3>
+                <p className="text-muted-foreground dark:text-muted-foreground">
                   Try different keywords or browse trending products
                 </p>
                 <Button
@@ -270,7 +270,7 @@ const Search = () => {
               </div>
             ) : (
               <div className="space-y-3">
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-muted-foreground dark:text-muted-foreground">
                   Found {searchResults.length} products for "{searchQuery}"
                 </p>
                 <div className="grid grid-cols-2 gap-4">
