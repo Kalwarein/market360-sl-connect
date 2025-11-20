@@ -12,6 +12,9 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Trash2, Save, X, Plus } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
+import { TargetAudienceSelector } from '@/components/TargetAudienceSelector';
+import { VariantManager } from '@/components/VariantManager';
+import { TechnicalSpecsManager } from '@/components/TechnicalSpecsManager';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -47,8 +50,26 @@ const ProductManagement = () => {
     hs_code: '',
     inquiry_only: false,
     published: false,
+    condition: '',
+    product_video_url: '',
+    warranty_type: '',
+    support_contact: '',
+    seller_story: '',
+    product_requirements: '',
   });
   const [perks, setPerks] = useState<Array<{ icon: string; label: string; color: string }>>([]);
+  const [targetAudience, setTargetAudience] = useState<string[]>([]);
+  const [variants, setVariants] = useState<any[]>([]);
+  const [technicalSpecs, setTechnicalSpecs] = useState<Record<string, string>>({});
+  const [shippingDetails, setShippingDetails] = useState<any>({});
+  const [safetyTags, setSafetyTags] = useState<string[]>([]);
+  const [enhancementTags, setEnhancementTags] = useState<string[]>([]);
+  const [ecoBadges, setEcoBadges] = useState<string[]>([]);
+  const [customLabels, setCustomLabels] = useState<string[]>([]);
+  const [includedInBox, setIncludedInBox] = useState<string[]>([]);
+  const [productHighlights, setProductHighlights] = useState<string[]>([]);
+  const [seoKeywords, setSeoKeywords] = useState<string[]>([]);
+  const [replacementAvailable, setReplacementAvailable] = useState(false);
 
   useEffect(() => {
     loadProduct();
@@ -91,11 +112,28 @@ const ProductManagement = () => {
         hs_code: data.hs_code || '',
         inquiry_only: data.inquiry_only || false,
         published: data.published || false,
+        condition: data.condition || '',
+        product_video_url: data.product_video_url || '',
+        warranty_type: data.warranty_type || '',
+        support_contact: data.support_contact || '',
+        seller_story: data.seller_story || '',
+        product_requirements: data.product_requirements || '',
       });
       
-      // Parse perks safely
-      const parsedPerks = Array.isArray(data.perks) ? data.perks : [];
-      setPerks(parsedPerks as Array<{ icon: string; label: string; color: string }>);
+      // Parse all complex fields with proper type casting
+      setPerks(Array.isArray(data.perks) ? data.perks as Array<{ icon: string; label: string; color: string }> : []);
+      setTargetAudience(Array.isArray(data.target_audience) ? data.target_audience as string[] : []);
+      setVariants(Array.isArray(data.variants) ? data.variants as any[] : []);
+      setTechnicalSpecs(data.technical_specs && typeof data.technical_specs === 'object' ? data.technical_specs as Record<string, string> : {});
+      setShippingDetails(data.shipping_details && typeof data.shipping_details === 'object' ? data.shipping_details : {});
+      setSafetyTags(Array.isArray(data.safety_tags) ? data.safety_tags as string[] : []);
+      setEnhancementTags(Array.isArray(data.enhancement_tags) ? data.enhancement_tags as string[] : []);
+      setEcoBadges(Array.isArray(data.eco_badges) ? data.eco_badges as string[] : []);
+      setCustomLabels(Array.isArray(data.custom_labels) ? data.custom_labels as string[] : []);
+      setIncludedInBox(Array.isArray(data.included_in_box) ? data.included_in_box as string[] : []);
+      setProductHighlights(Array.isArray(data.product_highlights) ? data.product_highlights as string[] : []);
+      setSeoKeywords(Array.isArray(data.seo_keywords) ? data.seo_keywords as string[] : []);
+      setReplacementAvailable(data.replacement_available || false);
     } catch (error) {
       console.error('Error loading product:', error);
       toast({
@@ -120,6 +158,24 @@ const ProductManagement = () => {
           model_number: formData.model_number,
           price: parseFloat(formData.price),
           moq: parseInt(formData.moq),
+          condition: formData.condition,
+          product_video_url: formData.product_video_url,
+          warranty_type: formData.warranty_type,
+          support_contact: formData.support_contact,
+          seller_story: formData.seller_story,
+          product_requirements: formData.product_requirements,
+          target_audience: targetAudience,
+          variants: variants,
+          technical_specs: technicalSpecs,
+          shipping_details: shippingDetails,
+          safety_tags: safetyTags,
+          enhancement_tags: enhancementTags,
+          eco_badges: ecoBadges,
+          custom_labels: customLabels,
+          included_in_box: includedInBox,
+          product_highlights: productHighlights,
+          seo_keywords: seoKeywords,
+          replacement_available: replacementAvailable,
           category: formData.category,
           tags: formData.tags.split(',').map(t => t.trim()).filter(Boolean),
           material: formData.material,
@@ -332,6 +388,157 @@ const ProductManagement = () => {
                 onCheckedChange={(checked) =>
                   setFormData({ ...formData, inquiry_only: checked })
                 }
+              />
+            </div>
+
+            <div>
+              <Label>Product Condition</Label>
+              <Input
+                value={formData.condition}
+                onChange={(e) => setFormData({ ...formData, condition: e.target.value })}
+                placeholder="Brand New, Like New, Used, etc."
+              />
+            </div>
+
+            <div>
+              <Label>Product Video URL (optional)</Label>
+              <Input
+                value={formData.product_video_url}
+                onChange={(e) => setFormData({ ...formData, product_video_url: e.target.value })}
+                placeholder="https://..."
+              />
+            </div>
+
+            <div>
+              <Label>Warranty Type</Label>
+              <Input
+                value={formData.warranty_type}
+                onChange={(e) => setFormData({ ...formData, warranty_type: e.target.value })}
+                placeholder="Store, Manufacturer, etc."
+              />
+            </div>
+
+            <div>
+              <Label>Support Contact</Label>
+              <Input
+                value={formData.support_contact}
+                onChange={(e) => setFormData({ ...formData, support_contact: e.target.value })}
+                placeholder="Phone/WhatsApp"
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <Switch
+                checked={replacementAvailable}
+                onCheckedChange={setReplacementAvailable}
+              />
+              <Label>Replacement Available</Label>
+            </div>
+
+            <div>
+              <Label>Seller Story / Product Background</Label>
+              <Textarea
+                value={formData.seller_story}
+                onChange={(e) => setFormData({ ...formData, seller_story: e.target.value })}
+                rows={4}
+                placeholder="Tell buyers about this product..."
+              />
+            </div>
+
+            <div>
+              <Label>Product Requirements</Label>
+              <Textarea
+                value={formData.product_requirements}
+                onChange={(e) => setFormData({ ...formData, product_requirements: e.target.value })}
+                rows={3}
+                placeholder="Assembly, tools needed, etc."
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Target Audience */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Target Audience</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <TargetAudienceSelector selected={targetAudience} onChange={setTargetAudience} />
+          </CardContent>
+        </Card>
+
+        {/* Variants */}
+        <VariantManager variants={variants} onChange={setVariants} />
+
+        {/* Technical Specs */}
+        <TechnicalSpecsManager specs={technicalSpecs} onChange={setTechnicalSpecs} />
+
+        {/* Tags & Badges */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Tags & Badges</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label>Enhancement Tags (comma-separated)</Label>
+              <Input
+                value={enhancementTags.join(', ')}
+                onChange={(e) => setEnhancementTags(e.target.value.split(',').map(t => t.trim()).filter(Boolean))}
+                placeholder="Trending, Luxury, Handmade, etc."
+              />
+            </div>
+
+            <div>
+              <Label>Safety Tags (comma-separated)</Label>
+              <Input
+                value={safetyTags.join(', ')}
+                onChange={(e) => setSafetyTags(e.target.value.split(',').map(t => t.trim()).filter(Boolean))}
+                placeholder="Fragile, Temperature sensitive, etc."
+              />
+            </div>
+
+            <div>
+              <Label>Eco Badges (comma-separated)</Label>
+              <Input
+                value={ecoBadges.join(', ')}
+                onChange={(e) => setEcoBadges(e.target.value.split(',').map(t => t.trim()).filter(Boolean))}
+                placeholder="Recyclable, Sustainable, Organic, etc."
+              />
+            </div>
+
+            <div>
+              <Label>Custom Labels (comma-separated)</Label>
+              <Input
+                value={customLabels.join(', ')}
+                onChange={(e) => setCustomLabels(e.target.value.split(',').map(t => t.trim()).filter(Boolean))}
+                placeholder="Wholesale only, Made-to-order, etc."
+              />
+            </div>
+
+            <div>
+              <Label>Included in Box (comma-separated)</Label>
+              <Input
+                value={includedInBox.join(', ')}
+                onChange={(e) => setIncludedInBox(e.target.value.split(',').map(t => t.trim()).filter(Boolean))}
+                placeholder="Charger, Manual, Cables, etc."
+              />
+            </div>
+
+            <div>
+              <Label>Product Highlights (comma-separated)</Label>
+              <Input
+                value={productHighlights.join(', ')}
+                onChange={(e) => setProductHighlights(e.target.value.split(',').map(t => t.trim()).filter(Boolean))}
+                placeholder="3-5 key product benefits"
+              />
+            </div>
+
+            <div>
+              <Label>SEO Keywords (comma-separated)</Label>
+              <Input
+                value={seoKeywords.join(', ')}
+                onChange={(e) => setSeoKeywords(e.target.value.split(',').map(t => t.trim()).filter(Boolean))}
+                placeholder="Search keywords for better discovery"
               />
             </div>
           </CardContent>
