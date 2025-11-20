@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
-import { Bell, ShoppingCart, MessageSquare, ArrowRight, Camera } from 'lucide-react';
+import { Bell, ShoppingCart, MessageSquare, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { supabase } from '@/integrations/supabase/client';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -10,7 +11,6 @@ import Sidebar from '@/components/Sidebar';
 import { PremiumSearchBar } from '@/components/PremiumSearchBar';
 import { MarketplaceProductCard } from '@/components/MarketplaceProductCard';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 
 interface Product {
   id: string;
@@ -25,8 +25,9 @@ const Home = () => {
   const [topDeals, setTopDeals] = useState<Product[]>([]);
   const [topRanking, setTopRanking] = useState<Product[]>([]);
   const [newArrivals, setNewArrivals] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<string[]>([]);
+  const [availableCategories, setAvailableCategories] = useState<string[]>(['All']);
   const [selectedCategory, setSelectedCategory] = useState('All');
+  const [categorySearch, setCategorySearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('products');
@@ -36,7 +37,6 @@ const Home = () => {
   const { user } = useAuth();
 
   useEffect(() => {
-    loadData();
     loadCategories();
     loadUnreadCount();
     loadCartCount();
@@ -44,13 +44,29 @@ const Home = () => {
 
   useEffect(() => {
     loadData();
-  }, [activeTab]);
+  }, [activeTab, selectedCategory]);
 
   const handleSearch = () => {
     if (searchQuery.trim()) {
       navigate(`/search?q=${encodeURIComponent(searchQuery)}`);
     } else {
       navigate('/search');
+    }
+  };
+
+  const loadCategories = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('products')
+        .select('category')
+        .eq('published', true);
+
+      if (error) throw error;
+
+      const categories = Array.from(new Set(data?.map(p => p.category).filter(Boolean))) as string[];
+      setAvailableCategories(['All', ...categories.sort()]);
+    } catch (error) {
+      console.error('Error loading categories:', error);
     }
   };
 
@@ -75,6 +91,10 @@ const Home = () => {
         query = query.eq('product_type', 'manufacturer');
       } else if (activeTab === 'worldwide') {
         query = query.eq('product_type', 'worldwide');
+      }
+
+      if (selectedCategory !== 'All') {
+        query = query.eq('category', selectedCategory);
       }
 
       const { data, error } = await query
@@ -122,6 +142,10 @@ const Home = () => {
           query = query.eq('product_type', 'worldwide');
         }
 
+        if (selectedCategory !== 'All') {
+          query = query.eq('category', selectedCategory);
+        }
+
         const { data, error } = await query
           .order('created_at', { ascending: false })
           .limit(10);
@@ -141,6 +165,10 @@ const Home = () => {
         query = query.eq('product_type', 'manufacturer');
       } else if (activeTab === 'worldwide') {
         query = query.eq('product_type', 'worldwide');
+      }
+
+      if (selectedCategory !== 'All') {
+        query = query.eq('category', selectedCategory);
       }
 
       const { data, error } = await query;
@@ -165,6 +193,10 @@ const Home = () => {
         query = query.eq('product_type', 'worldwide');
       }
 
+      if (selectedCategory !== 'All') {
+        query = query.eq('category', selectedCategory);
+      }
+
       const { data, error } = await query
         .order('created_at', { ascending: false })
         .limit(10);
@@ -176,30 +208,26 @@ const Home = () => {
     }
   };
 
-  const loadCategories = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('products')
-        .select('category')
-        .eq('published', true);
-
-      if (error) throw error;
-
-      const uniqueCategories = Array.from(new Set(data.map(p => p.category)));
-      setCategories(['All', ...uniqueCategories.slice(0, 10)]);
-    } catch (error) {
-      console.error('Error loading categories:', error);
-    }
-  };
-
   const loadUnreadCount = async () => {
     if (!user) return;
+
     try {
+      const { data: conversations } = await supabase
+        .from('conversations')
+        .select('id')
+        .or(`buyer_id.eq.${user.id},seller_id.eq.${user.id}`);
+
+      if (!conversations) return;
+
+      const conversationIds = conversations.map((c) => c.id);
+
       const { count } = await supabase
-        .from('notifications')
+        .from('messages')
         .select('*', { count: 'exact', head: true })
-        .eq('user_id', user.id)
+        .in('conversation_id', conversationIds)
+        .neq('sender_id', user.id)
         .is('read_at', null);
+
       setUnreadCount(count || 0);
     } catch (error) {
       console.error('Error loading unread count:', error);
@@ -208,233 +236,186 @@ const Home = () => {
 
   const loadCartCount = async () => {
     if (!user) return;
+
     try {
       const { count } = await supabase
         .from('cart_items')
         .select('*', { count: 'exact', head: true })
         .eq('user_id', user.id);
+
       setCartCount(count || 0);
     } catch (error) {
       console.error('Error loading cart count:', error);
     }
   };
 
-  const renderProductSection = () => (
-    <div className="space-y-8 px-4 py-6 w-full">
-      {topDeals.length > 0 && (
-        <section className="w-full">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h2 className="text-xl font-bold text-foreground">Top Deals</h2>
-              <p className="text-sm text-muted-foreground">Score the lowest prices on Market360</p>
-            </div>
-            <Button variant="ghost" size="sm" onClick={() => navigate('/top-deals')} className="gap-2 flex-shrink-0">
-              View All
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-          </div>
-          <ScrollArea className="w-full">
-            <div className="flex gap-4 pb-4">
-              {topDeals.map((product) => (
-                <MarketplaceProductCard
-                  key={product.id}
-                  id={product.id}
-                  title={product.title}
-                  price={product.price}
-                  image={product.images[0]}
-                  moq={product.moq || 1}
-                  tag="Top"
-                />
-              ))}
-            </div>
-            <ScrollBar orientation="horizontal" />
-          </ScrollArea>
-        </section>
-      )}
+  const filteredCategories = availableCategories.filter(cat =>
+    cat.toLowerCase().includes(categorySearch.toLowerCase())
+  );
 
-      {topRanking.length > 0 && (
-        <section className="w-full">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h2 className="text-xl font-bold text-foreground">Top Ranking</h2>
-              <p className="text-sm text-muted-foreground">Navigate trends with data-driven rankings</p>
-            </div>
-            <Button variant="ghost" size="sm" onClick={() => navigate('/top-ranking')} className="gap-2 flex-shrink-0">
-              View All
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-          </div>
-          <ScrollArea className="w-full">
-            <div className="flex gap-4 pb-4">
-              {topRanking.map((product) => (
-                <MarketplaceProductCard
-                  key={product.id}
-                  id={product.id}
-                  title={product.title}
-                  price={product.price}
-                  image={product.images[0]}
-                  moq={product.moq || 1}
-                  tag="Hot Selling"
-                />
-              ))}
-            </div>
-            <ScrollBar orientation="horizontal" />
-          </ScrollArea>
-        </section>
-      )}
-
-      {newArrivals.length > 0 && (
-        <section className="w-full">
-          <div className="flex items-center justify-between mb-4">
-            <div>
-              <h2 className="text-xl font-bold text-foreground">New Arrivals</h2>
-              <p className="text-sm text-muted-foreground">Stay ahead with the latest offerings</p>
-            </div>
-            <Button variant="ghost" size="sm" onClick={() => navigate('/new-arrivals')} className="gap-2 flex-shrink-0">
-              View All
-              <ArrowRight className="h-4 w-4" />
-            </Button>
-          </div>
-          <ScrollArea className="w-full">
-            <div className="flex gap-4 pb-4">
-              {newArrivals.map((product) => (
-                <MarketplaceProductCard
-                  key={product.id}
-                  id={product.id}
-                  title={product.title}
-                  price={product.price}
-                  image={product.images[0]}
-                  moq={product.moq || 1}
-                  tag="New"
-                />
-              ))}
-            </div>
-            <ScrollBar orientation="horizontal" />
-          </ScrollArea>
-        </section>
+  const renderProductSection = (title: string, products: Product[], viewAllPath: string) => (
+    <div className="px-4 py-3">
+      <div className="flex justify-between items-center mb-3">
+        <h2 className="text-lg font-bold text-foreground">{title}</h2>
+        <Button
+          variant="link"
+          className="text-primary hover:text-primary/80 p-0 h-auto"
+          onClick={() => navigate(viewAllPath)}
+        >
+          View All →
+        </Button>
+      </div>
+      {products.length === 0 ? (
+        <div className="text-center py-12 px-4">
+          <p className="text-muted-foreground text-sm">
+            {selectedCategory === 'All'
+              ? 'No products available'
+              : `No products found in "${selectedCategory}" category`}
+          </p>
+        </div>
+      ) : (
+        <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+          {products.map((product) => (
+            <MarketplaceProductCard
+              key={product.id}
+              id={product.id}
+              title={product.title}
+              price={product.price}
+              image={product.images?.[0] || '/placeholder.svg'}
+              moq={product.moq || 1}
+            />
+          ))}
+        </div>
       )}
     </div>
   );
 
   return (
-    <>
-      <div className="min-h-screen bg-background w-full overflow-x-hidden">
-        <div className="w-full">
-          <header className="sticky top-0 z-20 bg-card border-b border-border w-full">
-            <div className="w-full px-4 py-3">
-              <div className="flex items-center justify-between gap-4 max-w-7xl mx-auto">
-                <div className="flex items-center gap-2">
-                  <Sidebar />
-                  <h1 className="text-lg font-bold text-primary">Market360</h1>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button variant="ghost" size="icon" onClick={() => navigate('/search')} className="rounded-full">
-                    <Camera className="h-5 w-5" />
-                  </Button>
-                  <Button variant="ghost" size="icon" onClick={() => navigate('/notifications')} className="rounded-full relative">
-                    <Bell className="h-5 w-5" />
-                    {unreadCount > 0 && <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs">{unreadCount}</Badge>}
-                  </Button>
-                  <Button variant="ghost" size="icon" onClick={() => navigate('/cart')} className="rounded-full relative">
-                    <ShoppingCart className="h-5 w-5" />
-                    {cartCount > 0 && <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs">{cartCount}</Badge>}
-                  </Button>
-                  <Button variant="ghost" size="icon" onClick={() => navigate('/messages')} className="rounded-full">
-                    <MessageSquare className="h-5 w-5" />
-                  </Button>
-                </div>
-              </div>
+    <div className="min-h-screen bg-background overflow-x-hidden pb-20">
+      {/* Header */}
+      <header className="sticky top-0 z-50 bg-background border-b border-border shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Sidebar />
+              <h1 className="text-xl font-bold text-primary">Market360</h1>
             </div>
-          </header>
 
-          <div className="sticky top-[73px] z-10 bg-card border-b border-border w-full">
-            <div className="w-full px-4 py-3">
-              <div className="max-w-3xl mx-auto">
-                <PremiumSearchBar value={searchQuery} onChange={setSearchQuery} onSearch={handleSearch} placeholder="Search products, stores, or categories..." />
-              </div>
+            <div className="flex items-center gap-3">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="relative rounded-full"
+                onClick={() => navigate('/notifications')}
+              >
+                <Bell className="h-5 w-5" />
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="icon"
+                className="relative rounded-full"
+                onClick={() => navigate('/cart')}
+              >
+                <ShoppingCart className="h-5 w-5" />
+                {cartCount > 0 && (
+                  <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs">
+                    {cartCount}
+                  </Badge>
+                )}
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="icon"
+                className="relative rounded-full"
+                onClick={() => navigate('/messages')}
+              >
+                <MessageSquare className="h-5 w-5" />
+                {unreadCount > 0 && (
+                  <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs">
+                    {unreadCount}
+                  </Badge>
+                )}
+              </Button>
             </div>
           </div>
+        </div>
+      </header>
 
-          <div className="sticky top-[144px] z-10 bg-card border-b border-border w-full overflow-x-hidden">
-            <div className="w-full max-w-7xl mx-auto">
-              <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList className="w-full justify-start rounded-none bg-transparent border-0 h-12 px-4 overflow-x-auto">
-                  <TabsTrigger value="products" className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none bg-transparent whitespace-nowrap">Products</TabsTrigger>
-                  <TabsTrigger value="manufacturers" className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none bg-transparent whitespace-nowrap">Manufacturers</TabsTrigger>
-                  <TabsTrigger value="worldwide" className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none bg-transparent whitespace-nowrap">Worldwide</TabsTrigger>
-                </TabsList>
-              </Tabs>
-            </div>
+      {/* Search Bar Section */}
+      <div className="max-w-7xl mx-auto px-4 py-3">
+        <PremiumSearchBar
+          value={searchQuery}
+          onChange={setSearchQuery}
+          onSearch={handleSearch}
+          placeholder="Search products, stores..."
+        />
+      </div>
+
+      {/* Global Tabs */}
+      <div className="max-w-7xl mx-auto px-4 py-2">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+          <TabsList className="w-full grid grid-cols-3 bg-muted/50">
+            <TabsTrigger value="products">Products</TabsTrigger>
+            <TabsTrigger value="manufacturers">Manufacturers</TabsTrigger>
+            <TabsTrigger value="worldwide">Worldwide</TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
+
+      {/* Categories Row with Search */}
+      <div className="px-4 py-3 space-y-2">
+        <div className="flex gap-2 items-center">
+          <div className="relative flex-shrink-0 w-48">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search categories..."
+              value={categorySearch}
+              onChange={(e) => setCategorySearch(e.target.value)}
+              className="pl-9 h-9 rounded-full text-sm bg-card border-border"
+            />
           </div>
-
-          <main className="pb-24 md:pb-8 w-full overflow-x-hidden">
-            <div className="w-full max-w-7xl mx-auto">
-              <Tabs value={activeTab}>
-                <TabsContent value="products" className="mt-0 w-full">
-                  <div className="border-b border-border bg-card w-full overflow-x-hidden">
-                    <ScrollArea className="w-full">
-                      <div className="flex gap-4 px-4 py-3 max-w-7xl mx-auto">
-                        {categories.map((category) => (
-                          <Button key={category} variant={selectedCategory === category ? 'default' : 'ghost'} size="sm" onClick={() => setSelectedCategory(category)} className="whitespace-nowrap flex-shrink-0">
-                            {category}
-                          </Button>
-                        ))}
-                      </div>
-                      <ScrollBar orientation="horizontal" />
-                    </ScrollArea>
-                  </div>
-                  {renderProductSection()}
-                </TabsContent>
-
-                <TabsContent value="manufacturers" className="mt-0 w-full">
-                  <div className="border-b border-border bg-card w-full overflow-x-hidden">
-                    <ScrollArea className="w-full">
-                      <div className="flex gap-4 px-4 py-3 max-w-7xl mx-auto">
-                        {categories.map((category) => (
-                          <Button key={category} variant={selectedCategory === category ? 'default' : 'ghost'} size="sm" onClick={() => setSelectedCategory(category)} className="whitespace-nowrap flex-shrink-0">
-                            {category}
-                          </Button>
-                        ))}
-                      </div>
-                      <ScrollBar orientation="horizontal" />
-                    </ScrollArea>
-                  </div>
-                  {topDeals.length === 0 && topRanking.length === 0 && newArrivals.length === 0 ? (
-                    <div className="text-center py-20 px-4">
-                      <h2 className="text-2xl font-bold text-foreground mb-2">No Manufacturer Products Yet</h2>
-                      <p className="text-muted-foreground">Check back soon for manufacturer products</p>
-                    </div>
-                  ) : renderProductSection()}
-                </TabsContent>
-
-                <TabsContent value="worldwide" className="mt-0 w-full">
-                  <div className="border-b border-border bg-card w-full overflow-x-hidden">
-                    <ScrollArea className="w-full">
-                      <div className="flex gap-4 px-4 py-3 max-w-7xl mx-auto">
-                        {categories.map((category) => (
-                          <Button key={category} variant={selectedCategory === category ? 'default' : 'ghost'} size="sm" onClick={() => setSelectedCategory(category)} className="whitespace-nowrap flex-shrink-0">
-                            {category}
-                          </Button>
-                        ))}
-                      </div>
-                      <ScrollBar orientation="horizontal" />
-                    </ScrollArea>
-                  </div>
-                  {topDeals.length === 0 && topRanking.length === 0 && newArrivals.length === 0 ? (
-                    <div className="text-center py-20 px-4">
-                      <h2 className="text-2xl font-bold text-foreground mb-2">No Worldwide Products Yet</h2>
-                      <p className="text-muted-foreground">Check back soon for worldwide products</p>
-                    </div>
-                  ) : renderProductSection()}
-                </TabsContent>
-              </Tabs>
-            </div>
-          </main>
+          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide flex-1">
+            {filteredCategories.map((cat) => (
+              <button
+                key={cat}
+                onClick={() => {
+                  setSelectedCategory(cat);
+                  setCategorySearch('');
+                }}
+                className={`flex-shrink-0 px-4 py-2 border rounded-full text-sm font-medium transition-colors whitespace-nowrap ${
+                  selectedCategory === cat
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-card border-border hover:bg-accent'
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
+      {/* Product Sections */}
+      <div className="space-y-6">
+        {renderProductSection('Top Deals', topDeals, '/top-deals')}
+        {renderProductSection('Top Ranking', topRanking, '/top-ranking')}
+        {renderProductSection('New Arrivals', newArrivals, '/new-arrivals')}
+      </div>
+
       <BottomNav />
-    </>
+
+      <style>{`
+        .scrollbar-hide::-webkit-scrollbar {
+          display: none;
+        }
+        .scrollbar-hide {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+      `}</style>
+    </div>
   );
 };
 
