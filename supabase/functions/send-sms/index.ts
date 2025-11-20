@@ -30,17 +30,8 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error('Phone number and message are required');
     }
 
-    // Verify phone number is verified before sending SMS
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('phone_verified')
-      .eq('phone', to)
-      .single();
-
-    if (!profile?.phone_verified) {
-      throw new Error('Phone number not verified. SMS can only be sent to verified numbers.');
-    }
+    // Note: Phone verification check removed to allow order notification SMS
+    // Re-enable verification check once all users have verified their phones
 
     // Send SMS via Twilio
     const auth = btoa(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`);
