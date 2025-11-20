@@ -51,7 +51,10 @@ const HowToTopUp = () => {
           <div className="bg-white rounded-xl p-4 space-y-2">
             <p className="text-sm text-muted-foreground">Send money to this number:</p>
             <div className="flex items-center gap-2">
-              <code className="flex-1 text-2xl font-bold text-primary bg-muted px-4 py-3 rounded-lg">
+              <code 
+                onClick={copyNumber}
+                className="flex-1 text-2xl font-bold text-primary bg-muted px-4 py-3 rounded-lg cursor-pointer hover:bg-muted/80 transition-colors"
+              >
                 {orangeMoneyNumber}
               </code>
               <Button
