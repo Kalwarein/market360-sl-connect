@@ -121,12 +121,12 @@ const Search = () => {
       saveRecentSearch(query);
       setSearchParams({ q: query });
 
-      // Search in title, description, category, and tags
+      // Search across all product fields
       const { data: products, error } = await supabase
         .from('products')
         .select('*, stores(store_name, owner_id)')
         .eq('published', true)
-        .or(`title.ilike.%${query}%,description.ilike.%${query}%,category.ilike.%${query}%,tags.cs.{${query}}`)
+        .or(`title.ilike.%${query}%,description.ilike.%${query}%,category.ilike.%${query}%,tags.cs.{${query}},enhancement_tags.cs.{${query}},custom_labels.cs.{${query}},seo_keywords.cs.{${query}},search_phrases.cs.{${query}},target_audience.cs.{${query}}`)
         .order('created_at', { ascending: false })
         .limit(50);
 
