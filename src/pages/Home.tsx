@@ -334,8 +334,8 @@ const Home = () => {
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden pb-20">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-background border-b border-border shadow-sm">
+      {/* Header - Fixed */}
+      <header className="fixed top-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-md border-b border-border shadow-md">
         <div className="max-w-7xl mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -390,6 +390,8 @@ const Home = () => {
         </div>
       </header>
 
+      {/* Content with top padding to account for fixed header */}
+      <div className="pt-16">
       {/* Search Bar Section */}
       <div className="max-w-7xl mx-auto px-4 py-3">
         <PremiumSearchBar
@@ -449,6 +451,8 @@ const Home = () => {
         {renderProductSection('Top Deals', topDeals, '/top-deals')}
         {renderProductSection('Top Ranking', topRanking, '/top-ranking')}
         {renderProductSection('New Arrivals', newArrivals, '/new-arrivals')}
+      </div>
+
       </div>
 
       <BottomNav />
