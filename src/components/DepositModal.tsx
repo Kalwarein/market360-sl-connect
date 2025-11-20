@@ -18,11 +18,12 @@ export const DepositModal = ({ open, onOpenChange, onSuccess }: DepositModalProp
   const { user } = useAuth();
   const [amount, setAmount] = useState('');
   const [phone, setPhone] = useState('');
+  const [referenceNumber, setReferenceNumber] = useState('');
   const [screenshot, setScreenshot] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async () => {
-    if (!amount || !phone) {
+    if (!amount || !phone || !referenceNumber) {
       toast.error('Please fill all required fields');
       return;
     }
@@ -57,6 +58,7 @@ export const DepositModal = ({ open, onOpenChange, onSuccess }: DepositModalProp
         type: 'deposit',
         amount: amountNum,
         phone_number: phone,
+        reference_number: referenceNumber,
         screenshot_url: screenshotUrl,
       });
 
@@ -65,6 +67,7 @@ export const DepositModal = ({ open, onOpenChange, onSuccess }: DepositModalProp
       toast.success('Deposit request submitted successfully!');
       setAmount('');
       setPhone('');
+      setReferenceNumber('');
       setScreenshot(null);
       onOpenChange(false);
       onSuccess();
@@ -86,19 +89,20 @@ export const DepositModal = ({ open, onOpenChange, onSuccess }: DepositModalProp
         </DialogHeader>
         
         <div className="space-y-6 overflow-y-auto pr-2 scrollbar-thin">
-          <div className="bg-gradient-to-r from-green-50 to-emerald-50 border-l-4 border-primary rounded-xl p-5 shadow-sm animate-fade-in">
+          <div className="bg-gradient-to-r from-orange-50 to-orange-100 border-l-4 border-orange-500 rounded-xl p-5 shadow-sm animate-fade-in">
             <div className="flex gap-3 items-start">
-              <div className="p-2 bg-primary/10 rounded-full">
-                <AlertCircle className="h-5 w-5 text-primary" />
+              <div className="p-2 bg-orange-500/10 rounded-full">
+                <AlertCircle className="h-5 w-5 text-orange-600" />
               </div>
               <div className="text-sm text-gray-700 space-y-2">
-                <p className="font-semibold text-gray-900">Payment Instructions</p>
+                <p className="font-semibold text-gray-900">Orange Money Payment</p>
                 <ol className="space-y-2 leading-relaxed list-decimal list-inside">
-                  <li>Send your payment to Market360's number</li>
-                  <li>Enter the amount and your phone number</li>
-                  <li>Upload proof of payment (optional)</li>
+                  <li>Send money to: <strong className="text-orange-700">03347104747</strong></li>
+                  <li>Save the Orange Money reference number from SMS</li>
+                  <li>Enter details below and paste the reference number</li>
+                  <li>Upload screenshot of SMS (optional but recommended)</li>
                 </ol>
-                <p className="text-xs text-primary font-semibold mt-3 pt-3 border-t border-green-200">
+                <p className="text-xs text-orange-700 font-semibold mt-3 pt-3 border-t border-orange-200">
                   Note: A 2% processing fee applies
                 </p>
               </div>
@@ -131,6 +135,23 @@ export const DepositModal = ({ open, onOpenChange, onSuccess }: DepositModalProp
               onChange={(e) => setPhone(e.target.value)}
               className="mt-2 h-12 rounded-xl border-2 border-border focus:border-primary transition-all duration-300 shadow-sm"
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="reference" className="text-sm font-semibold text-foreground">
+              Orange Money Reference Number *
+            </Label>
+            <Input
+              id="reference"
+              type="text"
+              placeholder="Paste reference number from SMS"
+              value={referenceNumber}
+              onChange={(e) => setReferenceNumber(e.target.value)}
+              className="mt-2 h-12 rounded-xl border-2 border-border focus:border-primary transition-all duration-300 shadow-sm font-mono"
+            />
+            <p className="text-xs text-muted-foreground">
+              📱 Copy the reference number from your Orange Money SMS
+            </p>
           </div>
 
           <div className="space-y-2">

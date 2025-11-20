@@ -768,6 +768,7 @@ export type Database = {
           created_at: string
           id: string
           phone_number: string
+          reference_number: string | null
           reviewed_at: string | null
           reviewed_by: string | null
           screenshot_url: string | null
@@ -782,6 +783,7 @@ export type Database = {
           created_at?: string
           id?: string
           phone_number: string
+          reference_number?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           screenshot_url?: string | null
@@ -796,6 +798,7 @@ export type Database = {
           created_at?: string
           id?: string
           phone_number?: string
+          reference_number?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           screenshot_url?: string | null

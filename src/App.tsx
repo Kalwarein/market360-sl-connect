@@ -61,6 +61,7 @@ import TopDeals from "./pages/TopDeals";
 import TopRanking from "./pages/TopRanking";
 import NewArrivals from "./pages/NewArrivals";
 import ProductCreationSuccess from "./pages/ProductCreationSuccess";
+import HowToTopUp from "./pages/HowToTopUp";
 
 const queryClient = new QueryClient();
 
@@ -119,6 +120,7 @@ const App = () => (
               <Route path="/terms" element={<ProtectedRoute><Terms /></ProtectedRoute>} />
               <Route path="/privacy" element={<ProtectedRoute><Privacy /></ProtectedRoute>} />
               <Route path="/security-info" element={<SecurityInfo />} />
+              <Route path="/how-to-top-up" element={<ProtectedRoute><HowToTopUp /></ProtectedRoute>} />
               <Route path="/product-management/:id" element={<ProtectedRoute><ProductManagement /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
