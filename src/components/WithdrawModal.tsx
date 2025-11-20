@@ -19,10 +19,11 @@ export const WithdrawModal = ({ open, onOpenChange, onSuccess, currentBalance }:
   const { user } = useAuth();
   const [amount, setAmount] = useState('');
   const [phone, setPhone] = useState('');
+  const [referenceNumber, setReferenceNumber] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async () => {
-    if (!amount || !phone) {
+    if (!amount || !phone || !referenceNumber) {
       toast.error('Please fill all required fields');
       return;
     }
@@ -46,6 +47,7 @@ export const WithdrawModal = ({ open, onOpenChange, onSuccess, currentBalance }:
         type: 'withdrawal',
         amount: amountNum,
         phone_number: phone,
+        reference_number: referenceNumber,
       });
 
       if (error) throw error;
@@ -53,6 +55,7 @@ export const WithdrawModal = ({ open, onOpenChange, onSuccess, currentBalance }:
       toast.success('Withdrawal request submitted successfully!');
       setAmount('');
       setPhone('');
+      setReferenceNumber('');
       onOpenChange(false);
       onSuccess();
     } catch (error) {
@@ -125,6 +128,23 @@ export const WithdrawModal = ({ open, onOpenChange, onSuccess, currentBalance }:
               className="mt-2 h-12 rounded-xl border-2 border-border focus:border-primary transition-all duration-300 shadow-sm"
             />
           </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="withdraw-reference" className="text-sm font-semibold text-foreground">
+              Orange Money Reference Number *
+            </Label>
+            <Input
+              id="withdraw-reference"
+              type="text"
+              placeholder="Enter your Orange Money reference"
+              value={referenceNumber}
+              onChange={(e) => setReferenceNumber(e.target.value)}
+              className="mt-2 h-12 rounded-xl border-2 border-border focus:border-primary transition-all duration-300 shadow-sm font-mono"
+            />
+            <p className="text-xs text-muted-foreground">
+              💳 Enter the Orange Money account reference for withdrawal
+            </p>
+          </div>
         </div>
 
         <div className="flex gap-3 mt-6 pt-5 border-t">
@@ -137,7 +157,7 @@ export const WithdrawModal = ({ open, onOpenChange, onSuccess, currentBalance }:
           </Button>
           <Button 
             onClick={handleSubmit}
-            disabled={submitting || !amount || parseFloat(amount) > currentBalance}
+            disabled={submitting || !amount || parseFloat(amount) > currentBalance || !referenceNumber}
             className="flex-1 h-12 rounded-xl font-semibold shadow-lg shadow-primary/30 transition-all hover:scale-105 hover:shadow-xl hover:shadow-primary/40"
           >
             {submitting ? 'Processing...' : 'Submit Request'}
