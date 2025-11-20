@@ -26,7 +26,7 @@ const Sidebar = () => {
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
-        <Button variant="ghost" size="icon" className="text-white hover:bg-white/20">
+        <Button variant="ghost" size="icon" className="hover:bg-muted rounded-full">
           <Menu className="h-5 w-5" />
         </Button>
       </SheetTrigger>

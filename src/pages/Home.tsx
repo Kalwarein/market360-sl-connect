@@ -219,530 +219,222 @@ const Home = () => {
     }
   };
 
-  return (
-    <div className="min-h-screen bg-background flex overflow-x-hidden">
-      <Sidebar />
-      
-      <div className="flex-1 overflow-x-hidden">
-        {/* Slim Header */}
-        <header className="sticky top-0 z-20 bg-card border-b border-border">
-          <div className="max-w-7xl mx-auto px-4 py-3">
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-2">
-                <h1 className="text-lg font-bold text-primary">Market360</h1>
-              </div>
+  const renderProductSection = () => (
+    <div className="space-y-8 px-4 py-6 w-full">
+      {topDeals.length > 0 && (
+        <section className="w-full">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-xl font-bold text-foreground">Top Deals</h2>
+              <p className="text-sm text-muted-foreground">Score the lowest prices on Market360</p>
+            </div>
+            <Button variant="ghost" size="sm" onClick={() => navigate('/top-deals')} className="gap-2 flex-shrink-0">
+              View All
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </div>
+          <ScrollArea className="w-full">
+            <div className="flex gap-4 pb-4">
+              {topDeals.map((product) => (
+                <MarketplaceProductCard
+                  key={product.id}
+                  id={product.id}
+                  title={product.title}
+                  price={product.price}
+                  image={product.images[0]}
+                  moq={product.moq || 1}
+                  tag="Top"
+                />
+              ))}
+            </div>
+            <ScrollBar orientation="horizontal" />
+          </ScrollArea>
+        </section>
+      )}
 
-              <div className="flex items-center gap-2">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => navigate('/search')}
-                  className="rounded-full"
-                >
-                  <Camera className="h-5 w-5" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => navigate('/notifications')}
-                  className="rounded-full relative"
-                >
-                  <Bell className="h-5 w-5" />
-                  {unreadCount > 0 && (
-                    <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs">
-                      {unreadCount}
-                    </Badge>
-                  )}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => navigate('/cart')}
-                  className="rounded-full relative"
-                >
-                  <ShoppingCart className="h-5 w-5" />
-                  {cartCount > 0 && (
-                    <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs">
-                      {cartCount}
-                    </Badge>
-                  )}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => navigate('/messages')}
-                  className="rounded-full"
-                >
-                  <MessageSquare className="h-5 w-5" />
-                </Button>
+      {topRanking.length > 0 && (
+        <section className="w-full">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-xl font-bold text-foreground">Top Ranking</h2>
+              <p className="text-sm text-muted-foreground">Navigate trends with data-driven rankings</p>
+            </div>
+            <Button variant="ghost" size="sm" onClick={() => navigate('/top-ranking')} className="gap-2 flex-shrink-0">
+              View All
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </div>
+          <ScrollArea className="w-full">
+            <div className="flex gap-4 pb-4">
+              {topRanking.map((product) => (
+                <MarketplaceProductCard
+                  key={product.id}
+                  id={product.id}
+                  title={product.title}
+                  price={product.price}
+                  image={product.images[0]}
+                  moq={product.moq || 1}
+                  tag="Hot Selling"
+                />
+              ))}
+            </div>
+            <ScrollBar orientation="horizontal" />
+          </ScrollArea>
+        </section>
+      )}
+
+      {newArrivals.length > 0 && (
+        <section className="w-full">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-xl font-bold text-foreground">New Arrivals</h2>
+              <p className="text-sm text-muted-foreground">Stay ahead with the latest offerings</p>
+            </div>
+            <Button variant="ghost" size="sm" onClick={() => navigate('/new-arrivals')} className="gap-2 flex-shrink-0">
+              View All
+              <ArrowRight className="h-4 w-4" />
+            </Button>
+          </div>
+          <ScrollArea className="w-full">
+            <div className="flex gap-4 pb-4">
+              {newArrivals.map((product) => (
+                <MarketplaceProductCard
+                  key={product.id}
+                  id={product.id}
+                  title={product.title}
+                  price={product.price}
+                  image={product.images[0]}
+                  moq={product.moq || 1}
+                  tag="New"
+                />
+              ))}
+            </div>
+            <ScrollBar orientation="horizontal" />
+          </ScrollArea>
+        </section>
+      )}
+    </div>
+  );
+
+  return (
+    <>
+      <div className="min-h-screen bg-background w-full overflow-x-hidden">
+        <div className="w-full">
+          <header className="sticky top-0 z-20 bg-card border-b border-border w-full">
+            <div className="w-full px-4 py-3">
+              <div className="flex items-center justify-between gap-4 max-w-7xl mx-auto">
+                <div className="flex items-center gap-2">
+                  <Sidebar />
+                  <h1 className="text-lg font-bold text-primary">Market360</h1>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button variant="ghost" size="icon" onClick={() => navigate('/search')} className="rounded-full">
+                    <Camera className="h-5 w-5" />
+                  </Button>
+                  <Button variant="ghost" size="icon" onClick={() => navigate('/notifications')} className="rounded-full relative">
+                    <Bell className="h-5 w-5" />
+                    {unreadCount > 0 && <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs">{unreadCount}</Badge>}
+                  </Button>
+                  <Button variant="ghost" size="icon" onClick={() => navigate('/cart')} className="rounded-full relative">
+                    <ShoppingCart className="h-5 w-5" />
+                    {cartCount > 0 && <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs">{cartCount}</Badge>}
+                  </Button>
+                  <Button variant="ghost" size="icon" onClick={() => navigate('/messages')} className="rounded-full">
+                    <MessageSquare className="h-5 w-5" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </header>
+
+          <div className="sticky top-[73px] z-10 bg-card border-b border-border w-full">
+            <div className="w-full px-4 py-3">
+              <div className="max-w-3xl mx-auto">
+                <PremiumSearchBar value={searchQuery} onChange={setSearchQuery} onSearch={handleSearch} placeholder="Search products, stores, or categories..." />
               </div>
             </div>
           </div>
-        </header>
 
-        {/* Search Bar Section */}
-        <div className="sticky top-[73px] z-10 bg-card border-b border-border px-4 py-3">
-          <div className="max-w-3xl mx-auto">
-            <PremiumSearchBar
-              value={searchQuery}
-              onChange={setSearchQuery}
-              onSearch={handleSearch}
-              placeholder="Search products, stores, or categories..."
-            />
+          <div className="sticky top-[144px] z-10 bg-card border-b border-border w-full overflow-x-hidden">
+            <div className="w-full max-w-7xl mx-auto">
+              <Tabs value={activeTab} onValueChange={setActiveTab}>
+                <TabsList className="w-full justify-start rounded-none bg-transparent border-0 h-12 px-4 overflow-x-auto">
+                  <TabsTrigger value="products" className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none bg-transparent whitespace-nowrap">Products</TabsTrigger>
+                  <TabsTrigger value="manufacturers" className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none bg-transparent whitespace-nowrap">Manufacturers</TabsTrigger>
+                  <TabsTrigger value="worldwide" className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none bg-transparent whitespace-nowrap">Worldwide</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
           </div>
+
+          <main className="pb-24 md:pb-8 w-full overflow-x-hidden">
+            <div className="w-full max-w-7xl mx-auto">
+              <Tabs value={activeTab}>
+                <TabsContent value="products" className="mt-0 w-full">
+                  <div className="border-b border-border bg-card w-full overflow-x-hidden">
+                    <ScrollArea className="w-full">
+                      <div className="flex gap-4 px-4 py-3 max-w-7xl mx-auto">
+                        {categories.map((category) => (
+                          <Button key={category} variant={selectedCategory === category ? 'default' : 'ghost'} size="sm" onClick={() => setSelectedCategory(category)} className="whitespace-nowrap flex-shrink-0">
+                            {category}
+                          </Button>
+                        ))}
+                      </div>
+                      <ScrollBar orientation="horizontal" />
+                    </ScrollArea>
+                  </div>
+                  {renderProductSection()}
+                </TabsContent>
+
+                <TabsContent value="manufacturers" className="mt-0 w-full">
+                  <div className="border-b border-border bg-card w-full overflow-x-hidden">
+                    <ScrollArea className="w-full">
+                      <div className="flex gap-4 px-4 py-3 max-w-7xl mx-auto">
+                        {categories.map((category) => (
+                          <Button key={category} variant={selectedCategory === category ? 'default' : 'ghost'} size="sm" onClick={() => setSelectedCategory(category)} className="whitespace-nowrap flex-shrink-0">
+                            {category}
+                          </Button>
+                        ))}
+                      </div>
+                      <ScrollBar orientation="horizontal" />
+                    </ScrollArea>
+                  </div>
+                  {topDeals.length === 0 && topRanking.length === 0 && newArrivals.length === 0 ? (
+                    <div className="text-center py-20 px-4">
+                      <h2 className="text-2xl font-bold text-foreground mb-2">No Manufacturer Products Yet</h2>
+                      <p className="text-muted-foreground">Check back soon for manufacturer products</p>
+                    </div>
+                  ) : renderProductSection()}
+                </TabsContent>
+
+                <TabsContent value="worldwide" className="mt-0 w-full">
+                  <div className="border-b border-border bg-card w-full overflow-x-hidden">
+                    <ScrollArea className="w-full">
+                      <div className="flex gap-4 px-4 py-3 max-w-7xl mx-auto">
+                        {categories.map((category) => (
+                          <Button key={category} variant={selectedCategory === category ? 'default' : 'ghost'} size="sm" onClick={() => setSelectedCategory(category)} className="whitespace-nowrap flex-shrink-0">
+                            {category}
+                          </Button>
+                        ))}
+                      </div>
+                      <ScrollBar orientation="horizontal" />
+                    </ScrollArea>
+                  </div>
+                  {topDeals.length === 0 && topRanking.length === 0 && newArrivals.length === 0 ? (
+                    <div className="text-center py-20 px-4">
+                      <h2 className="text-2xl font-bold text-foreground mb-2">No Worldwide Products Yet</h2>
+                      <p className="text-muted-foreground">Check back soon for worldwide products</p>
+                    </div>
+                  ) : renderProductSection()}
+                </TabsContent>
+              </Tabs>
+            </div>
+          </main>
         </div>
-
-        {/* Global Tabs */}
-        <div className="sticky top-[144px] z-10 bg-card border-b border-border overflow-x-hidden">
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="max-w-7xl mx-auto">
-            <TabsList className="w-full justify-start rounded-none bg-transparent border-0 h-12 px-4">
-              <TabsTrigger
-                value="products"
-                className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none bg-transparent"
-              >
-                Products
-              </TabsTrigger>
-              <TabsTrigger
-                value="manufacturers"
-                className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none bg-transparent"
-              >
-                Manufacturers
-              </TabsTrigger>
-              <TabsTrigger
-                value="worldwide"
-                className="data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none bg-transparent"
-              >
-                Worldwide
-              </TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </div>
-
-        {/* Main Content */}
-        <main className="pb-20 md:pb-0">
-          <Tabs value={activeTab} className="max-w-7xl mx-auto">
-            <TabsContent value="products" className="mt-0">
-              {/* Categories Row */}
-              <div className="border-b border-border bg-card">
-                <ScrollArea className="w-full">
-                  <div className="flex gap-4 px-4 py-3">
-                    {categories.map((category) => (
-                      <Button
-                        key={category}
-                        variant={selectedCategory === category ? 'default' : 'ghost'}
-                        size="sm"
-                        onClick={() => setSelectedCategory(category)}
-                        className="whitespace-nowrap"
-                      >
-                        {category}
-                      </Button>
-                    ))}
-                  </div>
-                  <ScrollBar orientation="horizontal" />
-                </ScrollArea>
-              </div>
-
-              <div className="space-y-8 p-4">
-                {/* Top Deals Section */}
-                {topDeals.length > 0 && (
-                  <section>
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <h2 className="text-xl font-bold text-foreground">Top Deals</h2>
-                        <p className="text-sm text-muted-foreground">Score the lowest prices on Market360</p>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => navigate('/top-deals')}
-                        className="gap-2"
-                      >
-                        View All
-                        <ArrowRight className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <ScrollArea className="w-full">
-                      <div className="flex gap-4 pb-4">
-                        {topDeals.map((product) => (
-                          <MarketplaceProductCard
-                            key={product.id}
-                            id={product.id}
-                            title={product.title}
-                            price={product.price}
-                            image={product.images[0]}
-                            moq={product.moq || 1}
-                            tag="Top"
-                          />
-                        ))}
-                      </div>
-                      <ScrollBar orientation="horizontal" />
-                    </ScrollArea>
-                  </section>
-                )}
-
-                {/* Top Ranking Section */}
-                {topRanking.length > 0 && (
-                  <section>
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <h2 className="text-xl font-bold text-foreground">Top Ranking</h2>
-                        <p className="text-sm text-muted-foreground">Navigate trends with data-driven rankings</p>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => navigate('/top-ranking')}
-                        className="gap-2"
-                      >
-                        View All
-                        <ArrowRight className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <ScrollArea className="w-full">
-                      <div className="flex gap-4 pb-4">
-                        {topRanking.map((product) => (
-                          <MarketplaceProductCard
-                            key={product.id}
-                            id={product.id}
-                            title={product.title}
-                            price={product.price}
-                            image={product.images[0]}
-                            moq={product.moq || 1}
-                            tag="Hot Selling"
-                          />
-                        ))}
-                      </div>
-                      <ScrollBar orientation="horizontal" />
-                    </ScrollArea>
-                  </section>
-                )}
-
-                {/* New Arrivals Section */}
-                {newArrivals.length > 0 && (
-                  <section>
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <h2 className="text-xl font-bold text-foreground">New Arrivals</h2>
-                        <p className="text-sm text-muted-foreground">Stay ahead with the latest offerings</p>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => navigate('/new-arrivals')}
-                        className="gap-2"
-                      >
-                        View All
-                        <ArrowRight className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <ScrollArea className="w-full">
-                      <div className="flex gap-4 pb-4">
-                        {newArrivals.map((product) => (
-                          <MarketplaceProductCard
-                            key={product.id}
-                            id={product.id}
-                            title={product.title}
-                            price={product.price}
-                            image={product.images[0]}
-                            moq={product.moq || 1}
-                            tag="New"
-                          />
-                        ))}
-                      </div>
-                      <ScrollBar orientation="horizontal" />
-                    </ScrollArea>
-                  </section>
-                )}
-              </div>
-            </TabsContent>
-
-            <TabsContent value="manufacturers" className="mt-0">
-              {/* Categories Row */}
-              <div className="border-b border-border bg-card">
-                <ScrollArea className="w-full">
-                  <div className="flex gap-4 px-4 py-3">
-                    {categories.map((category) => (
-                      <Button
-                        key={category}
-                        variant={selectedCategory === category ? 'default' : 'ghost'}
-                        size="sm"
-                        onClick={() => setSelectedCategory(category)}
-                        className="whitespace-nowrap"
-                      >
-                        {category}
-                      </Button>
-                    ))}
-                  </div>
-                  <ScrollBar orientation="horizontal" />
-                </ScrollArea>
-              </div>
-
-              <div className="space-y-8 p-4">
-                {topDeals.length === 0 && topRanking.length === 0 && newArrivals.length === 0 ? (
-                  <div className="text-center py-20">
-                    <h2 className="text-2xl font-bold text-foreground mb-2">No Manufacturer Products Yet</h2>
-                    <p className="text-muted-foreground">Check back soon for manufacturer products</p>
-                  </div>
-                ) : (
-                  <>
-                    {topDeals.length > 0 && (
-                      <section>
-                        <div className="flex items-center justify-between mb-4">
-                          <div>
-                            <h2 className="text-xl font-bold text-foreground">Top Deals</h2>
-                            <p className="text-sm text-muted-foreground">Score the lowest prices on Market360</p>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => navigate('/top-deals')}
-                            className="gap-2"
-                          >
-                            View All
-                            <ArrowRight className="h-4 w-4" />
-                          </Button>
-                        </div>
-                        <ScrollArea className="w-full">
-                          <div className="flex gap-4 pb-4">
-                            {topDeals.map((product) => (
-                              <MarketplaceProductCard
-                                key={product.id}
-                                id={product.id}
-                                title={product.title}
-                                price={product.price}
-                                image={product.images[0]}
-                                moq={product.moq || 1}
-                                tag="Top"
-                              />
-                            ))}
-                          </div>
-                          <ScrollBar orientation="horizontal" />
-                        </ScrollArea>
-                      </section>
-                    )}
-
-                    {topRanking.length > 0 && (
-                      <section>
-                        <div className="flex items-center justify-between mb-4">
-                          <div>
-                            <h2 className="text-xl font-bold text-foreground">Top Ranking</h2>
-                            <p className="text-sm text-muted-foreground">Navigate trends with data-driven rankings</p>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => navigate('/top-ranking')}
-                            className="gap-2"
-                          >
-                            View All
-                            <ArrowRight className="h-4 w-4" />
-                          </Button>
-                        </div>
-                        <ScrollArea className="w-full">
-                          <div className="flex gap-4 pb-4">
-                            {topRanking.map((product) => (
-                              <MarketplaceProductCard
-                                key={product.id}
-                                id={product.id}
-                                title={product.title}
-                                price={product.price}
-                                image={product.images[0]}
-                                moq={product.moq || 1}
-                                tag="Hot Selling"
-                              />
-                            ))}
-                          </div>
-                          <ScrollBar orientation="horizontal" />
-                        </ScrollArea>
-                      </section>
-                    )}
-
-                    {newArrivals.length > 0 && (
-                      <section>
-                        <div className="flex items-center justify-between mb-4">
-                          <div>
-                            <h2 className="text-xl font-bold text-foreground">New Arrivals</h2>
-                            <p className="text-sm text-muted-foreground">Stay ahead with the latest offerings</p>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => navigate('/new-arrivals')}
-                            className="gap-2"
-                          >
-                            View All
-                            <ArrowRight className="h-4 w-4" />
-                          </Button>
-                        </div>
-                        <ScrollArea className="w-full">
-                          <div className="flex gap-4 pb-4">
-                            {newArrivals.map((product) => (
-                              <MarketplaceProductCard
-                                key={product.id}
-                                id={product.id}
-                                title={product.title}
-                                price={product.price}
-                                image={product.images[0]}
-                                moq={product.moq || 1}
-                                tag="New"
-                              />
-                            ))}
-                          </div>
-                          <ScrollBar orientation="horizontal" />
-                        </ScrollArea>
-                      </section>
-                    )}
-                  </>
-                )}
-              </div>
-            </TabsContent>
-
-            <TabsContent value="worldwide" className="mt-0">
-              {/* Categories Row */}
-              <div className="border-b border-border bg-card">
-                <ScrollArea className="w-full">
-                  <div className="flex gap-4 px-4 py-3">
-                    {categories.map((category) => (
-                      <Button
-                        key={category}
-                        variant={selectedCategory === category ? 'default' : 'ghost'}
-                        size="sm"
-                        onClick={() => setSelectedCategory(category)}
-                        className="whitespace-nowrap"
-                      >
-                        {category}
-                      </Button>
-                    ))}
-                  </div>
-                  <ScrollBar orientation="horizontal" />
-                </ScrollArea>
-              </div>
-
-              <div className="space-y-8 p-4">
-                {topDeals.length === 0 && topRanking.length === 0 && newArrivals.length === 0 ? (
-                  <div className="text-center py-20">
-                    <h2 className="text-2xl font-bold text-foreground mb-2">No Worldwide Products Yet</h2>
-                    <p className="text-muted-foreground">Check back soon for worldwide products</p>
-                  </div>
-                ) : (
-                  <>
-                    {topDeals.length > 0 && (
-                      <section>
-                        <div className="flex items-center justify-between mb-4">
-                          <div>
-                            <h2 className="text-xl font-bold text-foreground">Top Deals</h2>
-                            <p className="text-sm text-muted-foreground">Score the lowest prices on Market360</p>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => navigate('/top-deals')}
-                            className="gap-2"
-                          >
-                            View All
-                            <ArrowRight className="h-4 w-4" />
-                          </Button>
-                        </div>
-                        <ScrollArea className="w-full">
-                          <div className="flex gap-4 pb-4">
-                            {topDeals.map((product) => (
-                              <MarketplaceProductCard
-                                key={product.id}
-                                id={product.id}
-                                title={product.title}
-                                price={product.price}
-                                image={product.images[0]}
-                                moq={product.moq || 1}
-                                tag="Top"
-                              />
-                            ))}
-                          </div>
-                          <ScrollBar orientation="horizontal" />
-                        </ScrollArea>
-                      </section>
-                    )}
-
-                    {topRanking.length > 0 && (
-                      <section>
-                        <div className="flex items-center justify-between mb-4">
-                          <div>
-                            <h2 className="text-xl font-bold text-foreground">Top Ranking</h2>
-                            <p className="text-sm text-muted-foreground">Navigate trends with data-driven rankings</p>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => navigate('/top-ranking')}
-                            className="gap-2"
-                          >
-                            View All
-                            <ArrowRight className="h-4 w-4" />
-                          </Button>
-                        </div>
-                        <ScrollArea className="w-full">
-                          <div className="flex gap-4 pb-4">
-                            {topRanking.map((product) => (
-                              <MarketplaceProductCard
-                                key={product.id}
-                                id={product.id}
-                                title={product.title}
-                                price={product.price}
-                                image={product.images[0]}
-                                moq={product.moq || 1}
-                                tag="Hot Selling"
-                              />
-                            ))}
-                          </div>
-                          <ScrollBar orientation="horizontal" />
-                        </ScrollArea>
-                      </section>
-                    )}
-
-                    {newArrivals.length > 0 && (
-                      <section>
-                        <div className="flex items-center justify-between mb-4">
-                          <div>
-                            <h2 className="text-xl font-bold text-foreground">New Arrivals</h2>
-                            <p className="text-sm text-muted-foreground">Stay ahead with the latest offerings</p>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => navigate('/new-arrivals')}
-                            className="gap-2"
-                          >
-                            View All
-                            <ArrowRight className="h-4 w-4" />
-                          </Button>
-                        </div>
-                        <ScrollArea className="w-full">
-                          <div className="flex gap-4 pb-4">
-                            {newArrivals.map((product) => (
-                              <MarketplaceProductCard
-                                key={product.id}
-                                id={product.id}
-                                title={product.title}
-                                price={product.price}
-                                image={product.images[0]}
-                                moq={product.moq || 1}
-                                tag="New"
-                              />
-                            ))}
-                          </div>
-                          <ScrollBar orientation="horizontal" />
-                        </ScrollArea>
-                      </section>
-                    )}
-                  </>
-                )}
-              </div>
-            </TabsContent>
-          </Tabs>
-        </main>
       </div>
 
       <BottomNav />
-    </div>
+    </>
   );
 };
 
