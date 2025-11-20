@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,7 +17,9 @@ const Onboarding = () => {
   
   const [formData, setFormData] = useState({
     full_name: '',
-    date_of_birth: '',
+    birth_day: '',
+    birth_month: '',
+    birth_year: '',
     gender: '',
     street_address: '',
     city: '',
@@ -29,6 +31,32 @@ const Onboarding = () => {
     interests: '',
   });
 
+  // Calculate days in selected month
+  const daysInMonth = useMemo(() => {
+    if (!formData.birth_month || !formData.birth_year) return 31;
+    
+    const month = parseInt(formData.birth_month);
+    const year = parseInt(formData.birth_year);
+    
+    if (month === 2) {
+      // Check for leap year
+      const isLeapYear = (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0);
+      return isLeapYear ? 29 : 28;
+    }
+    
+    // Months with 30 days: April, June, September, November
+    if ([4, 6, 9, 11].includes(month)) {
+      return 30;
+    }
+    
+    return 31;
+  }, [formData.birth_month, formData.birth_year]);
+
+  const months = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+
   const handleComplete = async () => {
     try {
       setLoading(true);
@@ -39,11 +67,19 @@ const Onboarding = () => {
         .map(i => i.trim())
         .filter(i => i.length > 0);
 
+      // Construct date_of_birth from day, month, year
+      let dateOfBirth = null;
+      if (formData.birth_year && formData.birth_month && formData.birth_day) {
+        const month = formData.birth_month.padStart(2, '0');
+        const day = formData.birth_day.padStart(2, '0');
+        dateOfBirth = `${formData.birth_year}-${month}-${day}`;
+      }
+
       const { error } = await supabase
         .from('profiles')
         .update({
           full_name: formData.full_name,
-          date_of_birth: formData.date_of_birth || null,
+          date_of_birth: dateOfBirth,
           gender: formData.gender,
           street_address: formData.street_address,
           city: formData.city,
@@ -106,13 +142,70 @@ const Onboarding = () => {
               <Calendar className="h-4 w-4 text-primary" />
               Date of Birth
             </Label>
-            <Input
-              id="date_of_birth"
-              type="date"
-              value={formData.date_of_birth}
-              onChange={(e) => setFormData({ ...formData, date_of_birth: e.target.value })}
-              className="rounded-xl"
-            />
+            <div className="grid grid-cols-3 gap-2">
+              {/* Month Dropdown */}
+              <div>
+                <select
+                  value={formData.birth_month}
+                  onChange={(e) => {
+                    const newMonth = e.target.value;
+                    setFormData({ 
+                      ...formData, 
+                      birth_month: newMonth,
+                      // Reset day if it's invalid for new month
+                      birth_day: parseInt(formData.birth_day) > daysInMonth ? '' : formData.birth_day
+                    });
+                  }}
+                  className="w-full p-3 border border-border rounded-xl bg-background text-foreground focus:ring-2 focus:ring-primary z-50"
+                >
+                  <option value="">Month</option>
+                  {months.map((month, index) => (
+                    <option key={month} value={String(index + 1)}>
+                      {month}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Day Dropdown/Input */}
+              <div>
+                <Input
+                  type="number"
+                  placeholder="Day"
+                  min="1"
+                  max={daysInMonth}
+                  value={formData.birth_day}
+                  onChange={(e) => {
+                    const day = e.target.value;
+                    if (day === '' || (parseInt(day) >= 1 && parseInt(day) <= daysInMonth)) {
+                      setFormData({ ...formData, birth_day: day });
+                    }
+                  }}
+                  className="rounded-xl"
+                />
+              </div>
+
+              {/* Year Input */}
+              <div>
+                <Input
+                  type="number"
+                  placeholder="Year"
+                  min="1900"
+                  max={new Date().getFullYear()}
+                  value={formData.birth_year}
+                  onChange={(e) => {
+                    const year = e.target.value;
+                    if (year === '' || (parseInt(year) >= 1900 && parseInt(year) <= new Date().getFullYear())) {
+                      setFormData({ ...formData, birth_year: year });
+                    }
+                  }}
+                  className="rounded-xl"
+                />
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Select or type your birth date
+            </p>
           </div>
 
           <div className="space-y-2">
@@ -124,7 +217,7 @@ const Onboarding = () => {
               id="gender"
               value={formData.gender}
               onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
-              className="w-full p-3 border border-border rounded-xl bg-background text-foreground focus:ring-2 focus:ring-primary"
+              className="w-full p-3 border border-border rounded-xl bg-background text-foreground focus:ring-2 focus:ring-primary z-50"
             >
               <option value="">Select gender</option>
               <option value="male">Male</option>
