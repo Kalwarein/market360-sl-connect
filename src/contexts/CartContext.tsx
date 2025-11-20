@@ -88,6 +88,29 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     };
 
     load();
+
+    // Set up realtime subscription for cart changes
+    if (user) {
+      const channel = supabase
+        .channel('cart-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'cart_items',
+            filter: `user_id=eq.${user.id}`
+          },
+          () => {
+            load();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
   }, [user]);
 
   // Persist guest cart only
@@ -99,27 +122,41 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
 
   const addToCart = async (item: Omit<CartItem, 'quantity'>) => {
     if (user) {
-      setItems((prev) => {
-        const existing = prev.find((i) => i.id === item.id);
-        if (existing) {
-          const updated = prev.map((i) =>
-            i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i
-          );
-          // Fire and forget DB update
-          supabase
-            .from('cart_items')
-            .update({ quantity: (existing.quantity || 1) + 1 })
-            .match({ user_id: user.id, product_id: item.id });
-          return updated;
+      const existing = items.find((i) => i.id === item.id);
+      
+      if (existing) {
+        // Update quantity
+        const newQuantity = existing.quantity + 1;
+        const { error } = await supabase
+          .from('cart_items')
+          .update({ quantity: newQuantity })
+          .match({ user_id: user.id, product_id: item.id });
+
+        if (error) {
+          console.error('Failed to update cart item:', error);
+          return;
         }
-        // Insert in DB
-        supabase.from('cart_items').insert({
+
+        setItems((prev) =>
+          prev.map((i) =>
+            i.id === item.id ? { ...i, quantity: newQuantity } : i
+          )
+        );
+      } else {
+        // Insert new item
+        const { error } = await supabase.from('cart_items').insert({
           user_id: user.id,
           product_id: item.id,
           quantity: 1,
         });
-        return [...prev, { ...item, quantity: 1 }];
-      });
+
+        if (error) {
+          console.error('Failed to add cart item:', error);
+          return;
+        }
+
+        setItems((prev) => [...prev, { ...item, quantity: 1 }]);
+      }
       return;
     }
 
