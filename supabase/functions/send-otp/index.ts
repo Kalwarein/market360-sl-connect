@@ -13,9 +13,9 @@ const TWILIO_PHONE_NUMBER = Deno.env.get('TWILIO_PHONE_NUMBER')!;
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-interface SmsRequest {
-  to: string;
-  message: string;
+interface OtpRequest {
+  user_id: string;
+  phone_number: string;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -24,32 +24,45 @@ const handler = async (req: Request): Promise<Response> => {
   }
 
   try {
-    const { to, message }: SmsRequest = await req.json();
+    const { user_id, phone_number }: OtpRequest = await req.json();
 
-    if (!to || !message) {
-      throw new Error('Phone number and message are required');
+    if (!user_id || !phone_number) {
+      throw new Error('User ID and phone number are required');
     }
 
-    // Verify phone number is verified before sending SMS
+    // Generate 6-digit OTP code
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Set expiration to 10 minutes from now
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + 10);
+
+    // Create Supabase client with service role key
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('phone_verified')
-      .eq('phone', to)
-      .single();
 
-    if (!profile?.phone_verified) {
-      throw new Error('Phone number not verified. SMS can only be sent to verified numbers.');
+    // Store OTP in database
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({
+        phone_verification_code: otpCode,
+        phone_verification_expires_at: expiresAt.toISOString(),
+        phone: phone_number // Ensure phone is updated (trigger will format it)
+      })
+      .eq('id', user_id);
+
+    if (updateError) {
+      console.error('Database update error:', updateError);
+      throw new Error('Failed to store verification code');
     }
 
-    // Send SMS via Twilio
+    // Send OTP via Twilio SMS
     const auth = btoa(`${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}`);
     const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json`;
 
     const formData = new URLSearchParams();
-    formData.append('To', to);
+    formData.append('To', phone_number);
     formData.append('From', TWILIO_PHONE_NUMBER);
-    formData.append('Body', message);
+    formData.append('Body', `Your Market360 verification code is: ${otpCode}\n\nThis code expires in 10 minutes.`);
 
     const response = await fetch(twilioUrl, {
       method: 'POST',
@@ -63,21 +76,21 @@ const handler = async (req: Request): Promise<Response> => {
     if (!response.ok) {
       const error = await response.text();
       console.error('Twilio error:', error);
-      throw new Error(`Failed to send SMS: ${error}`);
+      throw new Error(`Failed to send OTP: ${error}`);
     }
 
     const result = await response.json();
-    console.log('SMS sent successfully:', result.sid);
+    console.log('OTP sent successfully:', result.sid);
 
     return new Response(
-      JSON.stringify({ success: true, messageSid: result.sid }),
+      JSON.stringify({ success: true, message: 'OTP sent successfully' }),
       {
         status: 200,
         headers: { 'Content-Type': 'application/json', ...corsHeaders },
       }
     );
   } catch (error: any) {
-    console.error('Error in send-sms function:', error);
+    console.error('Error in send-otp function:', error);
     return new Response(
       JSON.stringify({ error: error.message }),
       {

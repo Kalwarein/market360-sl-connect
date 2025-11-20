@@ -530,6 +530,9 @@ export type Database = {
           name: string | null
           notification_preferences: Json | null
           phone: string | null
+          phone_verification_code: string | null
+          phone_verification_expires_at: string | null
+          phone_verified: boolean | null
           region: string | null
           role: Database["public"]["Enums"]["user_role"]
           updated_at: string
@@ -545,6 +548,9 @@ export type Database = {
           name?: string | null
           notification_preferences?: Json | null
           phone?: string | null
+          phone_verification_code?: string | null
+          phone_verification_expires_at?: string | null
+          phone_verified?: boolean | null
           region?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
@@ -560,6 +566,9 @@ export type Database = {
           name?: string | null
           notification_preferences?: Json | null
           phone?: string | null
+          phone_verification_code?: string | null
+          phone_verification_expires_at?: string | null
+          phone_verified?: boolean | null
           region?: string | null
           role?: Database["public"]["Enums"]["user_role"]
           updated_at?: string
