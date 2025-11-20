@@ -149,14 +149,17 @@ const Onboarding = () => {
                   value={formData.birth_month}
                   onChange={(e) => {
                     const newMonth = e.target.value;
+                    const newDaysInMonth = newMonth === '2' 
+                      ? (formData.birth_year && ((parseInt(formData.birth_year) % 4 === 0 && parseInt(formData.birth_year) % 100 !== 0) || (parseInt(formData.birth_year) % 400 === 0)) ? 29 : 28)
+                      : ['4', '6', '9', '11'].includes(newMonth) ? 30 : 31;
+                    
                     setFormData({ 
                       ...formData, 
                       birth_month: newMonth,
-                      // Reset day if it's invalid for new month
-                      birth_day: parseInt(formData.birth_day) > daysInMonth ? '' : formData.birth_day
+                      birth_day: parseInt(formData.birth_day) > newDaysInMonth ? '' : formData.birth_day
                     });
                   }}
-                  className="w-full p-3 border border-border rounded-xl bg-background text-foreground focus:ring-2 focus:ring-primary z-50"
+                  className="w-full p-3 border border-border rounded-xl bg-background text-foreground focus:ring-2 focus:ring-primary focus:border-transparent"
                 >
                   <option value="">Month</option>
                   {months.map((month, index) => (
@@ -167,7 +170,7 @@ const Onboarding = () => {
                 </select>
               </div>
 
-              {/* Day Dropdown/Input */}
+              {/* Day Input */}
               <div>
                 <Input
                   type="number"
@@ -176,9 +179,15 @@ const Onboarding = () => {
                   max={daysInMonth}
                   value={formData.birth_day}
                   onChange={(e) => {
-                    const day = e.target.value;
-                    if (day === '' || (parseInt(day) >= 1 && parseInt(day) <= daysInMonth)) {
-                      setFormData({ ...formData, birth_day: day });
+                    const value = e.target.value;
+                    // Allow empty or valid numbers
+                    if (value === '') {
+                      setFormData({ ...formData, birth_day: '' });
+                    } else {
+                      const numValue = parseInt(value);
+                      if (!isNaN(numValue) && numValue >= 1 && numValue <= daysInMonth) {
+                        setFormData({ ...formData, birth_day: value });
+                      }
                     }
                   }}
                   className="rounded-xl"
@@ -194,9 +203,20 @@ const Onboarding = () => {
                   max={new Date().getFullYear()}
                   value={formData.birth_year}
                   onChange={(e) => {
-                    const year = e.target.value;
-                    if (year === '' || (parseInt(year) >= 1900 && parseInt(year) <= new Date().getFullYear())) {
-                      setFormData({ ...formData, birth_year: year });
+                    const value = e.target.value;
+                    // Allow typing freely, just update state
+                    setFormData({ ...formData, birth_year: value });
+                  }}
+                  onBlur={(e) => {
+                    // Validate on blur
+                    const value = e.target.value;
+                    if (value !== '') {
+                      const numValue = parseInt(value);
+                      const currentYear = new Date().getFullYear();
+                      if (isNaN(numValue) || numValue < 1900 || numValue > currentYear) {
+                        toast.error(`Please enter a year between 1900 and ${currentYear}`);
+                        setFormData({ ...formData, birth_year: '' });
+                      }
                     }
                   }}
                   className="rounded-xl"
@@ -204,7 +224,7 @@ const Onboarding = () => {
               </div>
             </div>
             <p className="text-xs text-muted-foreground">
-              Select or type your birth date
+              Select or type your birth date (Month, Day, Year)
             </p>
           </div>
 
@@ -217,7 +237,7 @@ const Onboarding = () => {
               id="gender"
               value={formData.gender}
               onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
-              className="w-full p-3 border border-border rounded-xl bg-background text-foreground focus:ring-2 focus:ring-primary z-50"
+              className="w-full p-3 border border-border rounded-xl bg-background text-foreground focus:ring-2 focus:ring-primary focus:border-transparent"
             >
               <option value="">Select gender</option>
               <option value="male">Male</option>
